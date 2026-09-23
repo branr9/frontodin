@@ -11,23 +11,23 @@
 			</div>
 
 			<nav class="rail-actions" aria-label="Accesos rápidos">
-				<button class="rail-button is-active" type="button" aria-label="Inicio">
+				<button class="rail-button" routerLink="/" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }" type="button" aria-label="Inicio">
 					<span class="rail-icon" aria-hidden="true">⌂</span>
 					<span class="rail-tooltip" role="tooltip">Inicio</span>
 				</button>
-				<button class="rail-button" type="button" aria-label="Consulta y seguimiento">
+				<button class="rail-button" routerLink="/consultaseguimiento" routerLinkActive="is-active" type="button" aria-label="Consulta y seguimiento">
 					<span class="rail-icon round" aria-hidden="true">⌁</span>
 					<span class="rail-tooltip" role="tooltip">Consulta y seguimiento</span>
 				</button>
-				<button class="rail-button" type="button" aria-label="Gestión de trámites">
+				<button class="rail-button" type="button" routerLink="/gestiontramites" routerLinkActive="is-active" aria-label="Gestión de trámites">
 					<span class="rail-icon grid" aria-hidden="true">▦</span>
 					<span class="rail-tooltip" role="tooltip">Gestión de trámites</span>
 				</button>
-				<button class="rail-button" type="button" aria-label="Gestión de usuarios">
+				<button class="rail-button" routerLink="/gestionusuarios" routerLinkActive="is-active" type="button" aria-label="Gestión de usuarios">
 					<span class="rail-icon grid" aria-hidden="true">▦</span>
 					<span class="rail-tooltip" role="tooltip">Gestión de usuarios</span>
 				</button>
-				<button class="rail-button" type="button" aria-label="Radicación">
+				<button class="rail-button" type="button" routerLink="/radicacion" routerLinkActive="is-active" aria-label="Radicación">
 					<span class="rail-icon round" aria-hidden="true">●</span>
 					<span class="rail-tooltip" role="tooltip">Radicación</span>
 				</button>
