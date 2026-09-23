@@ -1,0 +1,245 @@
+
+	:host {
+		--sidebar-ink: #f4f7fb;
+		--sidebar-muted: #98a6b8;
+		--sidebar-line: rgba(255, 255, 255, 0.1);
+		--sidebar-surface: #202832;
+		--sidebar-rail: #18212a;
+		--sidebar-active: #1479ee;
+		display: block;
+		min-height: 100vh;
+	}
+
+	.app-shell {
+		display: flex;
+		min-height: 100vh;
+		background: #f5f7fa;
+		color: #1d2936;
+	}
+
+	.sidebar {
+		display: flex;
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		width: 78px;
+		height: 100vh;
+		background: var(--sidebar-surface);
+		box-shadow: 12px 0 30px rgba(18, 31, 45, 0.08);
+	}
+
+	.sidebar-rail {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: 78px;
+		background: var(--sidebar-rail);
+	}
+
+	.brand-mark {
+		display: grid;
+		place-items: center;
+		width: 78px;
+		height: 104px;
+		color: #202832;
+		background: #f7f9fc;
+		font: 800 31px/1 Georgia, serif;
+	}
+
+	.brand-mark span {
+		display: grid;
+		place-items: center;
+		width: 43px;
+		height: 48px;
+		border-radius: 8px;
+		background: #fff;
+		box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+	}
+
+	.rail-actions {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		width: 100%;
+	}
+
+	.rail-button {
+		display: grid;
+		place-items: center;
+		position: relative;
+		width: 100%;
+		min-height: 90px;
+		border: 0;
+		border-bottom: 1px solid var(--sidebar-line);
+		color: #73adff;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.rail-tooltip {
+		position: absolute;
+		left: calc(100% + 12px);
+		top: 50%;
+		z-index: 20;
+		padding: 9px 12px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 6px;
+		color: #f4f7fb;
+		background: #202832;
+		box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+		font: 600 14px/1.2 Arial, sans-serif;
+		white-space: nowrap;
+		opacity: 0;
+		pointer-events: none;
+		transform: translate(-6px, -50%);
+		transition: opacity 160ms ease, transform 160ms ease;
+	}
+
+	.rail-button:hover .rail-tooltip,
+	.rail-button:focus-visible .rail-tooltip {
+		opacity: 1;
+		transform: translate(0, -50%);
+	}
+
+	.rail-button.is-active {
+		color: #fff;
+		background: var(--sidebar-active);
+	}
+
+	.rail-button:focus-visible,
+	.menu-button:focus-visible {
+		outline: 3px solid #8cc5ff;
+		outline-offset: -3px;
+	}
+
+	.rail-icon {
+		display: grid;
+		place-items: center;
+		width: 31px;
+		height: 31px;
+		border: 2px solid currentColor;
+		border-radius: 8px;
+		font: 700 17px/1 Arial, sans-serif;
+	}
+
+	.rail-icon.round {
+		border-radius: 50%;
+	}
+
+	.rail-icon.grid {
+		border: 0;
+		font-size: 26px;
+	}
+
+	.sidebar-menu {
+		flex: 1;
+		min-width: 0;
+		padding: 25px 22px;
+		overflow-y: auto;
+	}
+
+	.menu-heading {
+		display: flex;
+		align-items: center;
+		gap: 11px;
+		margin: 0 0 20px;
+		padding-bottom: 22px;
+		border-bottom: 1px solid var(--sidebar-line);
+		color: var(--sidebar-ink);
+		font: 700 23px/1.1 Arial, sans-serif;
+	}
+
+	.menu-heading .brand-mark-small {
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 7px;
+		color: #202832;
+		background: #fff;
+		font: 800 26px/1 Georgia, serif;
+	}
+
+	.menu-group {
+		margin-bottom: 17px;
+	}
+
+	.menu-button {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 10px 0;
+		border: 0;
+		color: var(--sidebar-ink);
+		background: transparent;
+		font: 700 18px/1.2 Arial, sans-serif;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.menu-button:hover,
+	.menu-link:hover {
+		color: #82bcff;
+	}
+
+	.chevron {
+		width: 12px;
+		height: 12px;
+		border-right: 3px solid currentColor;
+		border-bottom: 3px solid currentColor;
+		color: #8d9aab;
+		transform: rotate(-45deg);
+	}
+
+	.menu-group.is-open .chevron {
+		transform: rotate(45deg) translate(-2px, -2px);
+	}
+
+	.menu-links {
+		display: grid;
+		gap: 4px;
+		padding: 2px 0 12px 27px;
+	}
+
+	.menu-link {
+		padding: 8px 0;
+		border: 0;
+		color: #dce3ec;
+		background: transparent;
+		font: 400 16px/1.2 Arial, sans-serif;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.menu-divider {
+		height: 1px;
+		margin: 27px 0 25px;
+		background: var(--sidebar-line);
+	}
+
+	.main-content {
+		flex: 1;
+		min-width: 0;
+	}
+
+	@media (max-width: 760px) {
+		.sidebar {
+			width: 66px;
+			height: auto;
+			min-height: 100vh;
+		}
+
+		.sidebar-rail {
+			width: 66px;
+		}
+
+		.brand-mark {
+			width: 66px;
+			height: 84px;
+		}
+
+		.rail-button {
+			min-height: 76px;
+		}
+	}
