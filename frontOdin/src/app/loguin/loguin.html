@@ -1,0 +1,209 @@
+
+<main class="login-page">
+
+  <!-- DECORACIÓN DEL FONDO -->
+  <div class="background-grid" aria-hidden="true"></div>
+  <div class="background-glow" aria-hidden="true"></div>
+
+  <!-- BARRA SUPERIOR -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="topbar-icon">◆</span>
+      <span>ODIN</span>
+      <span class="brand-divider"></span>
+      <span class="topbar-subtitle">GESTOR DOCUMENTAL</span>
+    </div>
+
+    <span class="topbar-status">
+      <span class="status-dot"></span>
+      SISTEMA INSTITUCIONAL
+    </span>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div class="login-layout">
+
+    <!-- COLUMNA IZQUIERDA -->
+    <section class="login-panel" aria-labelledby="login-title">
+
+      <div class="login-content">
+
+        <div class="welcome-label">
+          <span class="welcome-line"></span>
+          ACCESO AL SISTEMA
+        </div>
+
+        <div class="brand">
+          <h1 id="login-title">
+            Bienvenido<span class="gold-dot">.</span>
+          </h1>
+
+          <p class="brand-description">
+            Ingresa tus credenciales para acceder a
+            la plataforma de gestión documental.
+          </p>
+        </div>
+
+        <!-- MENSAJES DE ERROR -->
+        @if (errorMessage) {
+          <div class="login-alert" role="alert">
+            <span class="alert-icon">!</span>
+            <p>{{ errorMessage }}</p>
+          </div>
+        }
+
+        <!-- FORMULARIO ANGULAR -->
+        <form
+          class="login-form"
+          [formGroup]="loginForm"
+          (ngSubmit)="onSubmit()">
+
+          <!-- USUARIO -->
+          <div class="form-field">
+
+            <label for="username">
+              USUARIO
+            </label>
+
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M4 21v-2a8 8 0 0 1 16 0v2"></path>
+                </svg>
+              </span>
+
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                placeholder="Correo, identificación o usuario"
+                formControlName="username">
+            </div>
+
+          </div>
+
+          <!-- CONTRASEÑA -->
+          <div class="form-field">
+
+            <label for="password">
+              CONTRASEÑA
+            </label>
+
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="4" y="10" width="16" height="11" rx="2"></rect>
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                </svg>
+              </span>
+
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Ingresa tu contraseña"
+                formControlName="password">
+            </div>
+
+          </div>
+
+          <!-- BOTÓN DE INGRESO -->
+          <button
+            class="submit-button"
+            type="submit"
+            [disabled]="isSubmitting">
+
+            <span>
+              {{ isSubmitting
+                ? 'INICIANDO SESIÓN...'
+                : 'INICIAR SESIÓN' }}
+            </span>
+
+            <span class="button-arrow" aria-hidden="true">→</span>
+
+          </button>
+
+        </form>
+
+        <!-- OPCIONES -->
+        <div class="login-options">
+
+          <button type="button" class="forgot-password">
+            ¿Olvidaste tu contraseña?
+          </button>
+
+        </div>
+
+        <div class="login-footer">
+          <div class="footer-line"></div>
+          <p>
+            ODIN · Sistema de Gestión Documental
+          </p>
+          <span>Servicio Nacional de Aprendizaje</span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- COLUMNA DERECHA: MODELO 3D -->
+    <section class="visual-panel" aria-label="Visualización 3D de ODIN">
+
+      <!-- LUCES DECORATIVAS -->
+      <div class="visual-glow visual-glow-one"></div>
+      <div class="visual-glow visual-glow-two"></div>
+
+      <!-- ARCO SUPERIOR FUTURISTA -->
+      <div class="neon-arc" aria-hidden="true"></div>
+
+      <div class="visual-content">
+
+        <div class="model-heading">
+          <span class="model-heading-line"></span>
+          IDENTIDAD DIGITAL
+          <span class="model-heading-line"></span>
+        </div>
+
+        <!-- LOGO 3D REAL -->
+        <div class="model-container">
+
+          <model-viewer
+            src="/models/base_basic_pbr.glb"
+            alt="Modelo tridimensional de ODIN"
+            auto-rotate
+            rotation-per-second="8deg"
+            camera-controls
+            interaction-prompt="none"
+            environment-image="neutral"
+            shadow-intensity="0.3"
+            exposure="1.4"
+            camera-orbit="0deg 90deg auto"
+            camera-target="auto auto auto"
+            field-of-view="30deg"
+            loading="eager">
+          </model-viewer>
+
+        </div>
+
+        <div class="model-text">
+          <h2>ODIN</h2>
+          <p>CONTROL · SEGURIDAD · GESTIÓN</p>
+        </div>
+
+      </div>
+
+      <!-- PIE DECORATIVO -->
+      <div class="visual-bottom">
+        <span>PLATAFORMA DIGITAL</span>
+        <span class="bottom-line"></span>
+        <span>GESTIÓN DOCUMENTAL</span>
+      </div>
+
+    </section>
+
+  </div>
+
+</main>

@@ -1,0 +1,23 @@
+{
+  "/login": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "withCredentials": true,
+    "logLevel": "debug"
+  },
+  "/logout": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "withCredentials": true,
+    "logLevel": "debug"
+  },
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "withCredentials": true,
+    "logLevel": "debug"
+  }
+}

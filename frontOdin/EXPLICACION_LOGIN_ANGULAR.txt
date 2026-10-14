@@ -1,0 +1,549 @@
+EXPLICACION DEL LOGIN ANGULAR Y LA AUTENTICACION CON SPRING BOOT
+===================================================================
+
+1. OBJETIVO
+-----------
+
+El objetivo fue reemplazar la interfaz de login construida con Thymeleaf por
+una interfaz desarrollada completamente en Angular.
+
+Angular controla:
+
+- La pantalla de inicio de sesión.
+- La validación del formulario.
+- Los mensajes de error.
+- La navegación después de iniciar sesión.
+- El menú lateral.
+- La navegación entre componentes.
+
+Spring Boot controla:
+
+- La validación de las credenciales.
+- La autenticación con Spring Security.
+- La validación de contraseñas BCrypt.
+- La creación de la sesión HTTP.
+- La cookie JSESSIONID.
+- La autorización de las peticiones protegidas.
+
+La interfaz utilizada después del login es la de Angular. No se utilizan las
+vistas Thymeleaf como dashboard o menú de usuario.
+
+
+2. FLUJO GENERAL
+----------------
+
+El flujo completo es:
+
+    Usuario visita /login
+            |
+            v
+    Angular muestra el formulario
+            |
+            v
+    Usuario escribe usuario y contraseña
+            |
+            v
+    Angular ejecuta POST /api/auth/login
+            |
+            v
+    Spring Security valida las credenciales
+            |
+            v
+    Spring crea la sesión HTTP JSESSIONID
+            |
+            v
+    El backend responde HTTP 200
+            |
+            v
+    Angular navega a /menu
+
+Angular no redirige al dashboard de Thymeleaf. La navegación posterior al
+login se realiza mediante el Router de Angular.
+
+
+3. ESTRUCTURA DEL FRONTEND
+--------------------------
+
+La estructura principal relacionada con el login es:
+
+    src/app/
+    |
+    +-- loguin/
+    |   +-- loguin.html
+    |   +-- loguin.css
+    |   +-- loguin.ts
+    |
+    +-- menu/
+    |   +-- menu.html
+    |   +-- menu.css
+    |   +-- menu.ts
+    |
+    +-- services/
+        +-- authservice.ts
+
+El componente loguin contiene la pantalla visual y el formulario.
+
+El servicio authservice contiene la comunicación HTTP con el backend.
+
+El componente menu contiene el layout principal de Angular, el sidebar y el
+router-outlet donde se cargan los componentes internos.
+
+
+4. FORMULARIO REACTIVO DE ANGULAR
+---------------------------------
+
+El componente de login utiliza ReactiveFormsModule.
+
+En loguin.ts se define un formulario tipado con dos campos:
+
+    username
+    password
+
+El formulario se crea con FormBuilder:
+
+    this.loginForm = this.formBuilder.nonNullable.group({
+      username: ['vigilante', Validators.required],
+      password: ['', Validators.required],
+    });
+
+Validators.required indica que ambos campos son obligatorios.
+
+En loguin.html el formulario se conecta con TypeScript:
+
+    <form
+      [formGroup]="loginForm"
+      (ngSubmit)="onSubmit()">
+
+La directiva [formGroup] conecta el HTML con el objeto loginForm.
+
+La directiva (ngSubmit)="onSubmit()" ejecuta el método onSubmit cuando el
+usuario presiona el botón de iniciar sesión.
+
+Cada input se conecta con su control:
+
+    <input formControlName="username">
+    <input formControlName="password">
+
+
+5. METODO onSubmit
+------------------
+
+Cuando se presiona el botón "Iniciar sesión", Angular ejecuta onSubmit().
+
+Primero se valida el formulario:
+
+    if (this.loginForm.invalid || this.isSubmitting) {
+      this.loginForm.markAllAsTouched();
+      return;
+    }
+
+Esto evita enviar datos incompletos y también evita enviar varias solicitudes
+si el usuario presiona varias veces el botón.
+
+Luego se activa el estado de carga:
+
+    this.isSubmitting = true;
+    this.errorMessage = '';
+
+isSubmitting sirve para:
+
+- Deshabilitar el botón durante la solicitud.
+- Mostrar el texto "Iniciando sesión...".
+- Evitar solicitudes duplicadas.
+
+Después se obtienen los datos:
+
+    const { username, password } = this.loginForm.getRawValue();
+
+Finalmente se llama al AuthService:
+
+    this.authService.login(username, password).subscribe({
+
+
+6. SERVICIO AuthService
+-----------------------
+
+El servicio se encuentra en:
+
+    src/app/services/authservice.ts
+
+Se declara como servicio global:
+
+    @Injectable({
+      providedIn: 'root',
+    })
+
+Esto permite que Angular cree y reutilice el servicio en toda la aplicación.
+
+El servicio utiliza HttpClient:
+
+    constructor(private readonly http: HttpClient) {}
+
+HttpClient es la herramienta de Angular para realizar solicitudes HTTP.
+
+La ruta API usada para iniciar sesión es:
+
+    private readonly loginUrl = '/api/auth/login';
+
+La etiqueta:
+
+    [AUTH ANGULAR]
+
+permite identificar rápidamente el código relacionado con la integración entre
+Angular y el backend.
+
+Esta ruta es diferente de /login. La ruta /login pertenece al flujo antiguo de
+Spring Security con Thymeleaf. Para Angular se creó una ruta API independiente:
+
+    POST /api/auth/login
+
+
+7. FORMATO DE LOS DATOS ENVIADOS
+--------------------------------
+
+El backend recibe el login como application/x-www-form-urlencoded.
+
+Por eso el servicio utiliza URLSearchParams:
+
+    const body = new URLSearchParams();
+    body.set('username', username);
+    body.set('password', password);
+
+El cuerpo enviado tiene una estructura similar a:
+
+    username=vigilante&password=********
+
+El header se establece así:
+
+    Content-Type: application/x-www-form-urlencoded
+
+No se envía un objeto JSON. El formato utilizado es el mismo formato de
+formulario que espera el backend.
+
+
+8. CONSERVACION DE LA SESION
+----------------------------
+
+La solicitud incluye:
+
+    withCredentials: true
+
+Esto permite que el navegador:
+
+- Acepte la cookie JSESSIONID enviada por Spring Boot.
+- Envíe la cookie en las solicitudes posteriores.
+- Mantenga la sesión autenticada.
+
+La cookie no se almacena manualmente en localStorage.
+
+El frontend tampoco guarda:
+
+- Contraseñas.
+- Tokens.
+- Cookies manualmente.
+- Credenciales.
+
+El navegador y Spring Security administran la sesión mediante JSESSIONID.
+
+
+9. RESPUESTA EXITOSA
+--------------------
+
+Cuando el backend valida correctamente las credenciales, responde con JSON:
+
+    {
+      "authenticated": true,
+      "username": "vigilante"
+    }
+
+Angular recibe la respuesta en el bloque next:
+
+    next: () => {
+      this.isSubmitting = false;
+      void this.router.navigate(['/menu']);
+    }
+
+Después de recibir HTTP 200:
+
+1. Se desactiva el estado de carga.
+2. Angular no abre una vista Thymeleaf.
+3. Angular navega a /menu.
+
+
+10. RESPUESTA CON ERROR
+-----------------------
+
+Si las credenciales son incorrectas, el backend responde HTTP 401:
+
+    {
+      "authenticated": false,
+      "message": "Credenciales inválidas o usuario inactivo."
+    }
+
+Angular procesa el error:
+
+    error: (error: HttpErrorResponse) => {
+      this.isSubmitting = false;
+      this.errorMessage = error.status === 401 || error.status === 403
+        ? 'Credenciales inválidas o usuario inactivo...'
+        : 'No fue posible iniciar sesión...';
+    }
+
+Los errores 401 y 403 muestran un mensaje relacionado con las credenciales.
+
+Otros errores muestran un mensaje general para no exponer información interna
+del servidor.
+
+El mensaje se presenta en el HTML:
+
+    @if (errorMessage) {
+      <div class="login-alert" role="alert">
+        <p>{{ errorMessage }}</p>
+      </div>
+    }
+
+
+11. CAMBIOS REALIZADOS EN EL BACKEND
+-------------------------------------
+
+En el backend se creó un endpoint REST exclusivo para Angular:
+
+    POST /api/auth/login
+
+El endpoint se encuentra en LoginController.java.
+
+Recibe:
+
+    @RequestParam("username") String username
+    @RequestParam("password") String password
+
+Luego utiliza el AuthenticationManager de Spring Security:
+
+    Authentication authentication =
+        authenticationManager.authenticate(
+            UsernamePasswordAuthenticationToken.unauthenticated(
+                username,
+                password));
+
+Esto significa que el backend no valida manualmente la contraseña.
+
+Spring Security se encarga de:
+
+- Buscar el usuario mediante CustomUserDetailsService.
+- Comparar la contraseña con BCrypt.
+- Validar el estado del usuario.
+- Cargar roles y permisos.
+- Generar la autenticación.
+
+Después se guarda la autenticación en el contexto de seguridad:
+
+    SecurityContext context =
+        SecurityContextHolder.createEmptyContext();
+
+    context.setAuthentication(authentication);
+    SecurityContextHolder.setContext(context);
+    securityContextRepository.saveContext(context, request, response);
+
+Esto permite que la autenticación quede vinculada a la sesión HTTP JSESSIONID.
+
+
+12. POR QUE SE CREO /api/auth/login
+------------------------------------
+
+Inicialmente se intentó utilizar:
+
+    POST /login
+
+Pero el backend tenía una ruta GET /login que devolvía la vista Thymeleaf.
+
+Como consecuencia, una solicitud POST podía responder:
+
+    405 Method Not Allowed
+
+Para separar claramente los flujos se creó:
+
+Flujo antiguo:
+
+    GET /login
+    Devuelve la vista auth/login de Thymeleaf.
+
+Flujo Angular:
+
+    POST /api/auth/login
+    Devuelve JSON y crea la sesión HTTP.
+
+Angular utiliza únicamente el segundo flujo.
+
+
+13. PROXY DE ANGULAR
+--------------------
+
+Angular utiliza un proxy de desarrollo definido en proxy.conf.json.
+
+El frontend llama a:
+
+    /api/auth/login
+
+El proxy reenvía la solicitud al backend:
+
+    http://localhost:8080/api/auth/login
+
+Esto evita que el navegador haga una solicitud directa entre los puertos
+4200 y 8080 y ayuda a evitar problemas de CORS durante el desarrollo.
+
+La configuración aplica también para:
+
+    /api
+    /login
+    /logout
+
+
+14. MENU LATERAL DE ANGULAR
+---------------------------
+
+El componente Menu funciona como layout principal.
+
+Su HTML contiene:
+
+- El sidebar lateral.
+- La navegación.
+- La barra superior.
+- El área central.
+- El router-outlet.
+
+El router-outlet es el espacio donde Angular carga los componentes hijos:
+
+    <router-outlet></router-outlet>
+
+En menu.ts se importan:
+
+    RouterLink
+    RouterLinkActive
+    RouterOutlet
+
+RouterLink permite navegar al hacer clic en cada opción.
+
+RouterLinkActive agrega la clase is-active al enlace seleccionado.
+
+RouterOutlet muestra el componente correspondiente en el área central.
+
+
+15. RUTAS HIJAS DEL MENU
+------------------------
+
+Las rutas se definieron así:
+
+    /menu
+    /menu/radicacion
+    /menu/gestionusuarios
+    /menu/gestiontramites
+    /menu/consultaseguimiento
+
+El menú funciona como componente padre:
+
+    {
+      path: 'menu',
+      component: Menu,
+      children: [
+        { path: 'radicacion', component: Radicaion },
+        { path: 'gestionusuarios', component: GestionUsuarios },
+        { path: 'gestiontramites', component: GestionTramites },
+        { path: 'consultaseguimiento', component: ConsultaSeguimiento }
+      ]
+    }
+
+Al seleccionar Gestión de trámites, Angular navega a:
+
+    /menu/gestiontramites
+
+El componente sigue mostrando su HTML original:
+
+    <p>gestion-tramites works!</p>
+
+No fue necesario modificar el contenido interno de los componentes.
+
+
+16. CIERRE DE SESION
+--------------------
+
+El botón de cierre de sesión está en el sidebar del menú Angular.
+
+El botón ejecuta:
+
+    (click)="logout()"
+
+El componente Menu llama al servicio:
+
+    this.authService.logout()
+
+El servicio realiza:
+
+    POST /api/auth/logout
+
+La intención del endpoint es:
+
+- Invalidar la sesión HTTP.
+- Eliminar la cookie JSESSIONID.
+- Limpiar el contexto de seguridad.
+- Registrar el cierre de sesión.
+
+Después de una respuesta correcta, Angular navega a:
+
+    /login
+
+Si el servidor devuelve un error de red, Angular también vuelve a /login,
+pero registra el problema en la consola:
+
+    [AUTH ANGULAR] No se pudo confirmar el cierre de sesión.
+
+Esto evita que el usuario quede bloqueado en el menú.
+
+
+17. ETIQUETAS DE UBICACION
+--------------------------
+
+Para identificar rápidamente los cambios relacionados con autenticación se
+utilizó la etiqueta:
+
+    [AUTH ANGULAR]
+
+Puedes buscarla en VS Code con:
+
+    Ctrl + Shift + F
+
+Archivos principales donde aparece:
+
+- authservice.ts
+- loguin.html
+- menu.html
+- menu.ts
+- LoginController.java
+
+
+18. RESUMEN PARA EXPONER
+------------------------
+
+Creamos un login Angular con formulario reactivo. El usuario escribe sus
+credenciales y el componente Loguin ejecuta onSubmit(). El método valida que
+los campos sean obligatorios y llama al AuthService.
+
+El AuthService envía una solicitud POST a /api/auth/login usando el formato
+application/x-www-form-urlencoded y withCredentials: true. Esto permite que
+Spring Security valide las credenciales y cree una sesión HTTP con la cookie
+JSESSIONID.
+
+Si la respuesta es exitosa, Angular no utiliza ninguna vista Thymeleaf.
+Angular navega directamente a la ruta /menu.
+
+El componente Menu funciona como layout principal. Mantiene visible el menú
+lateral y utiliza un router-outlet para mostrar los componentes hijos. Por
+ejemplo, al seleccionar Gestión de trámites, Angular navega a
+/menu/gestiontramites y muestra el HTML actual del componente:
+
+    <p>gestion-tramites works!</p>
+
+La idea principal es:
+
+    Backend = autenticación, sesión y API
+    Angular = interfaz, navegación y experiencia de usuario
+

@@ -63,7 +63,8 @@
               "buildTarget": "frontOdin:build:production"
             },
             "development": {
-              "buildTarget": "frontOdin:build:development"
+              "buildTarget": "frontOdin:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

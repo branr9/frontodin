@@ -1,0 +1,78 @@
+
+
+
+
+
+<!-- [AUTH ANGULAR] Esta es la interfaz Angular destino después del login. -->
+<div class="app-shell">
+	<aside class="sidebar" aria-label="Navegación principal">
+		<div class="sidebar-brand">
+			<div class="brand-mark" aria-hidden="true">O</div>
+			<div>
+				<strong>ODIN</strong>
+				<span>Gestor documental</span>
+			</div>
+		</div>
+
+		<nav class="sidebar-nav" aria-label="Navegación principal">
+			<p class="nav-label">MENÚ PRINCIPAL</p>
+			<a class="nav-item" routerLink="/menu/radicacion" routerLinkActive="is-active" aria-label="Radicación">
+				<span class="nav-icon" aria-hidden="true">⌂</span>
+				<span>Radicación</span>
+			</a>
+			<a class="nav-item" routerLink="/menu/consultaseguimiento" routerLinkActive="is-active" aria-label="Consulta y seguimiento">
+				<span class="nav-icon" aria-hidden="true">⌕</span>
+				<span>Consulta y seguimiento</span>
+			</a>
+			<a class="nav-item" routerLink="/menu/gestiontramites" routerLinkActive="is-active" aria-label="Gestión de trámites">
+				<span class="nav-icon" aria-hidden="true">▣</span>
+				<span>Gestión de trámites</span>
+			</a>
+			<a class="nav-item" routerLink="/menu/gestionusuarios" routerLinkActive="is-active" aria-label="Gestión de usuarios">
+				<span class="nav-icon" aria-hidden="true">♙</span>
+				<span>Gestión de usuarios</span>
+			</a>
+			<p class="nav-label section-label">SISTEMA</p>
+			<button class="nav-item nav-button" type="button">
+				<span class="nav-icon" aria-hidden="true">⚙</span>
+				<span>Configuración</span>
+			</button>
+		</nav>
+
+		<div class="sidebar-footer">
+			<div class="user-avatar" aria-hidden="true">U</div>
+			<div class="user-info">
+				<strong>Usuario ODIN</strong>
+				<span>Sesión activa</span>
+			</div>
+			<!-- [AUTH ANGULAR] Botón de cierre de sesión del menú Angular. -->
+			<button
+				class="logout-button"
+				type="button"
+				aria-label="Cerrar sesión"
+				(click)="logout()"
+				[disabled]="isLoggingOut">
+				<span aria-hidden="true">↪</span>
+				<span>{{ isLoggingOut ? 'Saliendo...' : 'Salir' }}</span>
+			</button>
+		</div>
+	</aside>
+
+	<main class="main-content">
+		<header class="topbar">
+			<div>
+				<p class="eyebrow">ESPACIO DE TRABAJO</p>
+				<h1>Panel principal</h1>
+			</div>
+			<div class="topbar-actions">
+				<button class="icon-button" type="button" aria-label="Notificaciones">♧</button>
+				<div class="topbar-user">Usuario</div>
+			</div>
+		</header>
+
+		<section class="content-area">
+			<!-- [AUTH ANGULAR] Los componentes existentes se renderizan aquí sin cambiar sus HTML. -->
+			<router-outlet></router-outlet>
+		</section>
+	</main>
+</div>
