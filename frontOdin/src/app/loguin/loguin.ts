@@ -1,5 +1,4 @@
-
-import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, ChangeDetectorRef } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -31,9 +30,10 @@ export class Loguin {
     private readonly formBuilder: FormBuilder,
     private readonly authService: AuthService,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {
     this.loginForm = this.formBuilder.nonNullable.group({
-      username: ['vigilante', Validators.required],
+      username: ['', Validators.required],
       password: ['', Validators.required],
     });
   }
@@ -46,21 +46,31 @@ export class Loguin {
 
     this.isSubmitting = true;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
     const { username, password } = this.loginForm.getRawValue();
+    console.log('[AUTH] Enviando solicitud de inicio de sesión para:', username);
 
     this.authService.login(username, password).subscribe({
-      next: () => {
+      next: (response) => {
+        console.log('[AUTH] Inicio de sesión exitoso. Redirigiendo a /menu...', response);
         this.isSubmitting = false;
-        void this.router.navigate(['/menu']);
+        this.cdr.markForCheck();
+        this.router.navigate(['/menu']).then((navigated) => {
+          console.log('[AUTH] Navegación a /menu completada:', navigated);
+        }).catch((navErr) => {
+          console.error('[AUTH] Error al navegar a /menu:', navErr);
+        });
       },
       error: (error: HttpErrorResponse) => {
+        console.error('[AUTH] Error al iniciar sesión:', error);
         this.isSubmitting = false;
 
         this.errorMessage =
           error.status === 401 || error.status === 403
             ? 'Credenciales inválidas o usuario inactivo. Verifique correo, identificación o nombre y contraseña.'
-            : 'No fue posible iniciar sesión. Intente nuevamente.';
+            : 'No fue posible iniciar sesión. Verifique la conexión con el servidor.';
+        this.cdr.markForCheck();
       },
     });
   }
