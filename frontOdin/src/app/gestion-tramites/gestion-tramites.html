@@ -1,1 +1,419 @@
-<p>gestion-tramites works!</p>
+<main class="px-4 md:px-8 py-6 flex-1">
+  <header class="odin-page-header" style="margin-bottom:1rem">
+    <div>
+      <h1 class="odin-page-title">Gestión de Trámites</h1>
+      <p class="odin-page-subtitle">Bandeja operativa + catálogo de tipos de trámite (RF-26, RF-28, RF-29, RF-32, RF-35)</p>
+    </div>
+  </header>
+
+  <!-- Pestañas unificadas -->
+  <div class="tabs" role="tablist">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab === 'bandeja'"
+      (click)="activeTab = 'bandeja'">
+      Bandeja operativa
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab === 'catalogo'"
+      (click)="activeTab = 'catalogo'">
+      Tipos de trámite
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab === 'form-tipo'"
+      (click)="abrirFormTipo()">
+      {{ f_idTramite ? 'Editar tipo de trámite' : 'Nuevo tipo de trámite' }}
+    </button>
+  </div>
+
+  <!-- ===================== TAB 1: BANDEJA OPERATIVA ===================== -->
+  @if (activeTab === 'bandeja') {
+    <div class="tab-panel active">
+      <section class="kpis" aria-label="Indicadores">
+        <a (click)="filtrarPorKpi('1')" class="kpi yellow kpi-clickable">
+          <small>Pendientes</small>
+          <h2>{{ pendientesCount() }}</h2>
+        </a>
+        <a (click)="filtrarPorKpi('2')" class="kpi blue kpi-clickable">
+          <small>En proceso</small>
+          <h2>{{ enProcesoCount() }}</h2>
+        </a>
+        <a (click)="filtrarPorKpi('3')" class="kpi green kpi-clickable">
+          <small>Finalizados</small>
+          <h2>{{ finalizadosCount() }}</h2>
+        </a>
+        <a (click)="filtrarPorKpi('', 'vencidos')" class="kpi red kpi-clickable">
+          <small>Vencidos</small>
+          <h2>{{ vencidosCount() }}</h2>
+        </a>
+        <a (click)="limpiarFiltros()" class="kpi green kpi-clickable">
+          <small>Total</small>
+          <h2>{{ totalRadicadosCount() }}</h2>
+        </a>
+      </section>
+
+      @if (vencidosCount() > 0) {
+        <div class="alert-summary">
+          <strong>Alerta documental:</strong>
+          existen <span>{{ vencidosCount() }}</span> radicado(s) vencido(s) que requieren atención inmediata.
+        </div>
+      }
+
+      @if (feedbackMsg) {
+        <div class="mb-3 rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-800">
+          {{ feedbackMsg }}
+        </div>
+      }
+
+      <!-- Filtros RF-35 completos -->
+      <div class="filter-card">
+        <div class="filter-grid">
+          <div>
+            <label for="texto">Buscar</label>
+            <input
+              id="texto"
+              type="text"
+              [(ngModel)]="textoFiltro"
+              placeholder="Radicado o asunto...">
+          </div>
+          <div>
+            <label for="estado">Estado</label>
+            <select id="estado" [(ngModel)]="estadoFiltro">
+              <option value="">Todos los estados</option>
+              @for (e of odinData.estados; track e.id_estado) {
+                <option [value]="e.id_estado">{{ e.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="dependencia">Dependencia</label>
+            <select id="dependencia" [(ngModel)]="dependenciaFiltro">
+              <option value="">Todas</option>
+              @for (d of odinData.dependencias; track d.id_dependencia) {
+                <option [value]="d.id_dependencia">{{ d.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="tramite">Trámite</label>
+            <select id="tramite" [(ngModel)]="tramiteFiltro">
+              <option value="">Todos</option>
+              @for (t of odinData.tramites(); track t.idTramite) {
+                <option [value]="t.idTramite">{{ t.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="fechaDesde">Fecha desde</label>
+            <input id="fechaDesde" type="date" [(ngModel)]="fechaDesdeFiltro">
+          </div>
+          <div>
+            <label for="fechaHasta">Fecha hasta</label>
+            <input id="fechaHasta" type="date" [(ngModel)]="fechaHastaFiltro">
+          </div>
+          <div>
+            <label for="vencimiento">Vencimiento</label>
+            <select id="vencimiento" [(ngModel)]="vencimientoFiltro">
+              <option value="">Todas</option>
+              <option value="vencidos">Vencidos</option>
+              <option value="proximos">Próximos a vencer</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn-primary">Filtrar</button>
+            <button type="button" class="btn-secondary" (click)="limpiarFiltros()">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones masivas -->
+      <div class="mass-actions">
+        <button type="button" (click)="abrirModalMasivo('asignar')">Asignar</button>
+        <button type="button" (click)="abrirModalMasivo('estado')">Cambiar Estado</button>
+        <button type="button" (click)="abrirModalMasivo('reasignar')">Reasignar</button>
+        <button type="button" (click)="abrirModalMasivo('cerrar')">Cerrar</button>
+      </div>
+
+      <!-- Tabla de radicados -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" (change)="toggleAll($event)"></th>
+              <th>Radicado</th>
+              <th>Asunto</th>
+              <th>Trámite</th>
+              <th>Estado</th>
+              <th>Dependencia</th>
+              <th>Responsable</th>
+              <th>Prioridad</th>
+              <th>Vencimiento</th>
+              <th>Días rest.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of radicadosFiltrados; track r.id_radicado) {
+              <tr>
+                <td>
+                  <input
+                    type="checkbox"
+                    [checked]="seleccionados.has(r.id_radicado)"
+                    (change)="toggleSeleccion(r.id_radicado, $any($event.target).checked)">
+                </td>
+                <td class="font-semibold">{{ r.numero_radicado }}</td>
+                <td>{{ r.asunto }}</td>
+                <td>{{ odinData.getNombreTramite(r.id_tramite) }}</td>
+                <td><span class="badge-estado">{{ odinData.getNombreEstado(r.id_estado) }}</span></td>
+                <td>{{ odinData.getNombreDependencia(r.id_dependencia) }}</td>
+                <td>{{ odinData.getNombreUsuario(r.id_usuario) }}</td>
+                <td>{{ r.prioridad }}</td>
+                <td>{{ r.fecha_vencimiento || 'Sin fecha' }}</td>
+                <td>
+                  @if (r.diasRestantes > 3) {
+                    <span class="dias-ok">{{ r.diasRestantes }} d</span>
+                  } @else if (r.diasRestantes >= 0) {
+                    <span class="dias-warn">{{ r.diasRestantes }} d</span>
+                  } @else {
+                    <span class="dias-vencido">Venc. {{ r.diasRestantes * -1 }} d</span>
+                  }
+                </td>
+                <td class="whitespace-nowrap">
+                  <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+                    <button type="button" class="btn-ver" (click)="verDetalle(r)">Ver</button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="11" style="text-align:center;padding:1.5rem;color:#64748b">
+                  No hay radicados registrados con los filtros actuales
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager-info">
+          Mostrando <strong>{{ radicadosFiltrados.length }}</strong> de
+          <strong>{{ totalRadicadosCount() }}</strong> radicados — Página 1 / 1
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ===================== TAB 2: CATÁLOGO TIPOS DE TRÁMITE ===================== -->
+  @if (activeTab === 'catalogo') {
+    <div class="tab-panel active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+        <div>
+          <h2 style="font-size:1.1rem;font-weight:700;margin:0">Catálogo de tipos de trámite</h2>
+          <p style="font-size:.85rem;color:#64748b;margin:.25rem 0 0">Parametrización de plazos y configuración (RF-26, RF-28, RF-29)</p>
+        </div>
+        <button type="button" class="btn-primary" (click)="abrirFormTipo()">+ Nuevo tipo de trámite</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Días respuesta</th>
+              <th>Prioridad def.</th>
+              <th>Requiere resp.</th>
+              <th>Activo</th>
+              <th>Dependencia</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of odinData.tramites(); track t.idTramite) {
+              <tr>
+                <td>{{ t.idTramite }}</td>
+                <td>
+                  <strong>{{ t.nombre }}</strong>
+                  <div style="font-size:.75rem;color:#94a3b8">{{ t.descripcion }}</div>
+                </td>
+                <td>
+                  <span style="font-weight:700;color:#15803d">{{ t.diasRespuesta }} días</span>
+                </td>
+                <td>{{ t.prioridadDefault }}</td>
+                <td>{{ t.requiereRespuesta ? 'Sí' : 'No' }}</td>
+                <td>
+                  <span class="badge-estado" [class.badge-vencido]="!t.activo">
+                    {{ t.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td>{{ odinData.getNombreDependencia(t.idDependenciaResponsable) }}</td>
+                <td>
+                  <button type="button" class="btn-edit" (click)="editarTipo(t)">Editar</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ===================== TAB 3: FORMULARIO TIPO DE TRÁMITE ===================== -->
+  @if (activeTab === 'form-tipo') {
+    <div class="tab-panel active">
+      <form (ngSubmit)="guardarTipoTramite()">
+        <div class="form-card">
+          <h2 class="section-title">Información general</h2>
+          <div class="form-grid">
+            <div style="grid-column:1 / -1">
+              <label for="f_nombre">Nombre del trámite *</label>
+              <input
+                type="text"
+                id="f_nombre"
+                name="f_nombre"
+                [(ngModel)]="f_nombre"
+                required
+                maxlength="150"
+                placeholder="Ej: Derecho de petición">
+            </div>
+            <div style="grid-column:1 / -1">
+              <label for="f_descripcion">Descripción</label>
+              <textarea
+                id="f_descripcion"
+                name="f_descripcion"
+                [(ngModel)]="f_descripcion"
+                rows="3"
+                placeholder="Descripción del trámite y criterios de uso"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <h2 class="section-title">Plazos y respuesta (RF-28, RF-29)</h2>
+          <div class="form-grid">
+            <div>
+              <label for="f_diasRespuesta">Días de respuesta *</label>
+              <input
+                type="number"
+                id="f_diasRespuesta"
+                name="f_diasRespuesta"
+                [(ngModel)]="f_diasRespuesta"
+                min="0"
+                max="365"
+                required
+                placeholder="Ej: 15">
+              <p class="form-hint">Días hábiles o calendario según norma del trámite. Parametrizable sin redeploy.</p>
+            </div>
+            <div>
+              <label for="f_prioridadDefault">Prioridad por defecto</label>
+              <select id="f_prioridadDefault" name="f_prioridadDefault" [(ngModel)]="f_prioridadDefault">
+                <option value="BAJA">Baja</option>
+                <option value="MEDIA">Media</option>
+                <option value="ALTA">Alta</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </div>
+            <div>
+              <label for="f_idDependencia">Dependencia responsable</label>
+              <select id="f_idDependencia" name="f_idDependencia" [(ngModel)]="f_idDependencia">
+                <option value="">Sin asignar</option>
+                @for (d of odinData.dependencias; track d.id_dependencia) {
+                  <option [value]="d.id_dependencia">{{ d.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="f_idEstadoInicial">Estado inicial</label>
+              <select id="f_idEstadoInicial" name="f_idEstadoInicial" [(ngModel)]="f_idEstadoInicial">
+                <option value="">Por defecto del sistema</option>
+                @for (e of odinData.estados; track e.id_estado) {
+                  <option [value]="e.id_estado">{{ e.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="f_requiereRespuesta" name="f_requiereRespuesta" [(ngModel)]="f_requiereRespuesta">
+              <label for="f_requiereRespuesta" style="text-transform:none;font-size:.875rem;margin:0">Requiere respuesta formal</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="f_activo" name="f_activo" [(ngModel)]="f_activo">
+              <label for="f_activo" style="text-transform:none;font-size:.875rem;margin:0">Trámite activo</label>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+          <button type="submit" class="btn-primary">Guardar tipo de trámite</button>
+          <button type="button" class="btn-secondary" (click)="activeTab = 'catalogo'">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Modal de acciones masivas -->
+  @if (modalAction) {
+    <div class="odin-modal-backdrop" (click)="modalAction = null"></div>
+    <div class="odin-modal" role="dialog" aria-modal="true">
+      <div class="odin-modal-card">
+        <h3>
+          {{
+            modalAction === 'asignar'
+              ? 'Asignar responsable'
+              : modalAction === 'estado'
+                ? 'Cambiar estado'
+                : modalAction === 'reasignar'
+                  ? 'Reasignar dependencia'
+                  : 'Cerrar radicado(s)'
+          }}
+        </h3>
+        <p class="odin-modal-help">
+          Se aplicará sobre {{ seleccionados.size }} radicado(s) seleccionado(s).
+        </p>
+
+        @if (modalAction === 'asignar') {
+          <label>Responsable</label>
+          <select [(ngModel)]="modalValor">
+            <option value="">Seleccione usuario...</option>
+            @for (u of odinData.usuarios(); track u.id_usuario) {
+              <option [value]="u.id_usuario">{{ u.nombre }}</option>
+            }
+          </select>
+        }
+
+        @if (modalAction === 'estado') {
+          <label>Nuevo estado</label>
+          <select [(ngModel)]="modalValor">
+            <option value="">Seleccione estado...</option>
+            @for (e of odinData.estados; track e.id_estado) {
+              <option [value]="e.id_estado">{{ e.nombre }}</option>
+            }
+          </select>
+        }
+
+        @if (modalAction === 'reasignar') {
+          <label>Dependencia destino</label>
+          <select [(ngModel)]="modalValor">
+            <option value="">Seleccione dependencia...</option>
+            @for (d of odinData.dependencias; track d.id_dependencia) {
+              <option [value]="d.id_dependencia">{{ d.nombre }}</option>
+            }
+          </select>
+        }
+
+        <label>Observación</label>
+        <textarea rows="2" [(ngModel)]="modalObservacion" placeholder="Motivo o nota de trazabilidad..."></textarea>
+
+        <div class="odin-modal-actions">
+          <button type="button" class="btn-secondary" (click)="modalAction = null">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="confirmarAccionMasiva()">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  }
+</main>

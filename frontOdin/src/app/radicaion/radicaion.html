@@ -1,1 +1,263 @@
-<p>radicaion works!</p>
+<main class="p-4 sm:p-6">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="odin-page-title text-2xl font-bold mb-1">Registrar radicado</h1>
+    <p class="text-slate-600 mb-4">Formulario completo · RF-04 a RF-23 (incluye anónima y forma de respuesta)</p>
+
+    @if (radicadoCreado) {
+      <div class="mb-4 rounded-xl border border-green-300 bg-green-50 p-4 text-green-900 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <strong class="text-sm font-extrabold uppercase tracking-wide text-green-800">✔ Radicado generado exitosamente</strong>
+          <p class="text-sm m-0 mt-1">
+            Consecutivo oficial: <span class="font-mono font-bold">{{ radicadoCreado.numero_radicado }}</span> ·
+            Vencimiento estimado: <strong>{{ radicadoCreado.fecha_vencimiento }}</strong>
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" (click)="irAGestion()" class="btn-primary text-xs">Ver en bandeja</button>
+          <button type="button" (click)="radicadoCreado = null" class="btn-secondary text-xs">Nuevo registro</button>
+        </div>
+      </div>
+    }
+
+    @if (errorMsg) {
+      <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm font-semibold text-red-700">
+        {{ errorMsg }}
+      </div>
+    }
+
+    <form (ngSubmit)="guardarRadicado()">
+      <!-- Tipo de radicación y consecutivo -->
+      <div class="form-card">
+        <h2 class="section-title">Tipo y canal</h2>
+        <div class="form-grid">
+          <div>
+            <label>Tipo de radicación *</label>
+            <select [(ngModel)]="tipoRadicacion" name="tipoRadicacion" required>
+              <option value="ENTRADA">Entrada (E-)</option>
+              <option value="SALIDA">Salida (S-)</option>
+              <option value="INTERNO">Interno</option>
+            </select>
+            <p class="hint">El consecutivo se genera automáticamente según el tipo y vigencia (RF-05, RF-06).</p>
+          </div>
+          <div>
+            <label>Canal de recepción *</label>
+            <select [(ngModel)]="canalRecepcion" name="canalRecepcion" required>
+              <option value="FISICO">Físico</option>
+              <option value="CORREO">Correo electrónico</option>
+              <option value="WEB">Portal web</option>
+              <option value="OTRO">Otro</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo de documento</label>
+            <select [(ngModel)]="tipoDocumento" name="tipoDocumento">
+              <option value="">Seleccione...</option>
+              <option value="OFICIO">Oficio</option>
+              <option value="MEMORANDO">Memorando</option>
+              <option value="PETICION">Derecho de petición</option>
+              <option value="QUEJA">Queja / Reclamo</option>
+              <option value="OTRO">Otro</option>
+            </select>
+          </div>
+          <div>
+            <label>Trámite / tipo de solicitud *</label>
+            <select [(ngModel)]="id_tramite" name="id_tramite" required>
+              <option value="">Seleccione...</option>
+              @for (t of odinData.tramites(); track t.idTramite) {
+                <option [value]="t.idTramite">{{ t.nombre }} ({{ t.diasRespuesta }} días)</option>
+              }
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- RF-09: Radicación anónima -->
+      <div class="form-card">
+        <h2 class="section-title">Remitente</h2>
+        <div class="anon-box">
+          <label style="display:flex;align-items:center;gap:.5rem;text-transform:none;font-size:.9rem;font-weight:600;color:#166534;cursor:pointer;margin:0">
+            <input
+              type="checkbox"
+              name="anonimo"
+              [(ngModel)]="anonimo"
+              (change)="onToggleAnonimo()"
+              style="width:auto">
+            Radicación anónima (sin datos del remitente) — RF-09
+          </label>
+        </div>
+        <div class="form-grid">
+          <div>
+            <label>Nombre / Razón social</label>
+            <input
+              type="text"
+              name="remitente"
+              [(ngModel)]="remitente"
+              [disabled]="anonimo"
+              placeholder="Nombre completo o entidad">
+          </div>
+          <div>
+            <label>Número de identificación</label>
+            <input
+              type="text"
+              name="numeroIdentificacion"
+              [(ngModel)]="numeroIdentificacion"
+              [disabled]="anonimo"
+              placeholder="CC / NIT / CE">
+          </div>
+          <div>
+            <label>Correo electrónico</label>
+            <input
+              type="email"
+              name="correo"
+              [(ngModel)]="correo"
+              [disabled]="anonimo"
+              placeholder="correo@ejemplo.com">
+          </div>
+          <div>
+            <label>Teléfono</label>
+            <input
+              type="text"
+              name="telefono"
+              [(ngModel)]="telefono"
+              [disabled]="anonimo"
+              placeholder="3001234567">
+          </div>
+          <div>
+            <label>Ciudad</label>
+            <input
+              type="text"
+              name="ciudad"
+              [(ngModel)]="ciudad"
+              [disabled]="anonimo"
+              placeholder="Ej: Cali">
+          </div>
+          <!-- RF-14: Forma de respuesta -->
+          <div>
+            <label>Forma de respuesta preferida *</label>
+            <select name="formaRespuesta" [(ngModel)]="formaRespuesta" required>
+              <option value="ELECTRONICA">Electrónica (correo)</option>
+              <option value="FISICA">Física (correspondencia)</option>
+              <option value="PRESENCIAL">Presencial / ventanilla</option>
+              <option value="NO_APLICA">No aplica / anónima</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Asignación TRD -->
+      <div class="form-card">
+        <h2 class="section-title">Asignación y clasificación (CCD/TRD)</h2>
+        <div class="form-grid">
+          <div>
+            <label>Dependencia destino *</label>
+            <select [(ngModel)]="id_dependencia" name="id_dependencia" required>
+              <option value="">Seleccione...</option>
+              @for (d of odinData.dependencias; track d.id_dependencia) {
+                <option [value]="d.id_dependencia">{{ d.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>Responsable (usuario)</label>
+            <select [(ngModel)]="id_usuario" name="id_usuario">
+              <option value="">Asignar después</option>
+              @for (u of odinData.usuarios(); track u.id_usuario) {
+                <option [value]="u.id_usuario">{{ u.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>Serie documental</label>
+            <select [(ngModel)]="codigo_serie" name="codigo_serie">
+              <option value="">Seleccione...</option>
+              @for (s of odinData.series; track s.codigo_serie) {
+                <option [value]="s.codigo_serie">{{ s.codigo_serie }} - {{ s.nombre_serie }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>Subserie</label>
+            <select [(ngModel)]="codigo_subserie" name="codigo_subserie">
+              <option value="">Seleccione...</option>
+              @for (ss of subseriesFiltradas; track ss.codigo_subserie) {
+                <option [value]="ss.codigo_subserie">{{ ss.codigo_subserie }} - {{ ss.nombre_subserie }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>Prioridad</label>
+            <select [(ngModel)]="prioridad" name="prioridad">
+              <option value="NORMAL">Normal</option>
+              <option value="ALTA">Alta</option>
+              <option value="URGENTE">Urgente</option>
+            </select>
+          </div>
+          <div>
+            <label>Fecha de vencimiento (estimada)</label>
+            <input type="date" [(ngModel)]="fecha_vencimiento" name="fecha_vencimiento">
+            <p class="hint">Se calcula automáticamente según días de respuesta del trámite si se deja vacío.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenido -->
+      <div class="form-card">
+        <h2 class="section-title">Contenido del documento</h2>
+        <div style="margin-bottom:1rem">
+          <label>Asunto *</label>
+          <input
+            type="text"
+            [(ngModel)]="asunto"
+            name="asunto"
+            required
+            maxlength="500"
+            placeholder="Asunto del documento">
+        </div>
+        <div style="margin-bottom:1rem">
+          <label>Descripción / observaciones</label>
+          <textarea
+            [(ngModel)]="descripcion"
+            name="descripcion"
+            rows="4"
+            placeholder="Descripción breve o notas de radicación"></textarea>
+        </div>
+        <div class="form-grid">
+          <div>
+            <label>Número de folios</label>
+            <input type="number" [(ngModel)]="numeroFolios" name="numeroFolios" min="0">
+          </div>
+          <div>
+            <label>Soporte</label>
+            <select [(ngModel)]="soporte" name="soporte">
+              <option value="DIGITAL">Digital</option>
+              <option value="FISICO">Físico</option>
+              <option value="HIBRIDO">Híbrido</option>
+            </select>
+          </div>
+          <div>
+            <label>Confidencialidad</label>
+            <select [(ngModel)]="confidencialidad" name="confidencialidad">
+              <option value="PUBLICA">Pública</option>
+              <option value="RESERVADA">Reservada</option>
+              <option value="CLASIFICADA">Clasificada</option>
+            </select>
+          </div>
+          <div>
+            <label>Anexos (archivos)</label>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.jpg,.png,.xlsx"
+              (change)="onFileSelected($event)">
+            <p class="hint">Máx. tamaño según política institucional.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <button type="submit" class="btn-primary">Radicar documento</button>
+        <a routerLink="/menu/gestiontramites" class="btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</main>

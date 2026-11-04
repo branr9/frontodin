@@ -1,1 +1,396 @@
-<p>gestion-usuarios works!</p>
+<main class="px-4 md:px-8 py-6 flex-1">
+  @if (!modoFormulario) {
+    <!-- ===================== VISTA LISTADO DE USUARIOS (usuarios.html) ===================== -->
+    <section class="mb-6">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 class="odin-page-title">Gestión de Usuarios</h1>
+          <p class="text-sm text-slate-500 mt-2">
+            Administre y rastree el estado de los usuarios registrados en el sistema.
+          </p>
+        </div>
+
+        <div class="flex gap-3">
+          <button
+            type="button"
+            (click)="abrirNuevoUsuario()"
+            class="inline-flex items-center justify-center rounded-lg bg-[#2fa300] px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#248400] transition cursor-pointer border-0">
+            Nuevo usuario
+          </button>
+        </div>
+      </div>
+    </section>
+
+    @if (successMessage) {
+      <div class="mb-5">
+        <div class="rounded-lg border border-green-200 bg-green-50 px-5 py-3 text-sm text-green-800 shadow-sm flex justify-between items-center">
+          <span>{{ successMessage }}</span>
+          <button type="button" (click)="successMessage = ''" class="text-green-700 font-bold bg-transparent border-0 cursor-pointer">✕</button>
+        </div>
+      </div>
+    }
+
+    <!-- BUSCADOR -->
+    <section class="mb-5">
+      <div class="relative">
+        <span class="absolute inset-y-0 left-4 flex items-center text-slate-400">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar usuario, correo, identificación o responsable..."
+          class="w-full rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-600 shadow-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100">
+      </div>
+    </section>
+
+    <!-- CARD TABLA -->
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <!-- FILTROS -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 px-5 py-4 border-b border-slate-100">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+            Tipo de identificación
+          </label>
+          <select
+            [(ngModel)]="filtroTipoId"
+            class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-green-500">
+            <option value="">Todos los tipos</option>
+            <option value="CC">CC</option>
+            <option value="CE">CE</option>
+            <option value="NIT">NIT</option>
+            <option value="TI">TI</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+            Estado
+          </label>
+          <select
+            [(ngModel)]="filtroEstado"
+            class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-green-500">
+            <option value="">Todos</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+            Dependencia
+          </label>
+          <select
+            [(ngModel)]="filtroDependencia"
+            class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-green-500">
+            <option value="">Todas</option>
+            @for (d of odinData.dependencias; track d.id_dependencia) {
+              <option [value]="d.id_dependencia">{{ d.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+            Acciones
+          </label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              (click)="successMessage = 'Reporte PDF de usuarios generado.'"
+              class="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-center text-sm text-slate-600 hover:bg-slate-50 cursor-pointer">
+              PDF
+            </button>
+            <button
+              type="button"
+              (click)="successMessage = 'Exportación Excel de usuarios generada.'"
+              class="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-center text-sm text-slate-600 hover:bg-slate-50 cursor-pointer">
+              Excel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLA -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="bg-[#fafafa] border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-500">
+              <th class="px-5 py-4 text-left font-bold">Usuario</th>
+              <th class="px-5 py-4 text-left font-bold">Rol</th>
+              <th class="px-5 py-4 text-left font-bold">Dependencia</th>
+              <th class="px-5 py-4 text-left font-bold">Identificación</th>
+              <th class="px-5 py-4 text-left font-bold">Correo</th>
+              <th class="px-5 py-4 text-left font-bold">Estado</th>
+              <th class="px-5 py-4 text-left font-bold">Teléfono</th>
+              <th class="px-5 py-4 text-center font-bold">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-100">
+            @for (usuario of usuariosFiltrados; track usuario.id_usuario) {
+              <tr class="hover:bg-slate-50 transition">
+                <td class="px-5 py-4">
+                  <div class="font-bold text-slate-800">{{ usuario.nombre }}</div>
+                  <div class="text-xs text-slate-400">ID: {{ usuario.id_usuario }}</div>
+                </td>
+
+                <td class="px-5 py-4 text-slate-600">
+                  <span class="font-medium">{{ usuario.rolNombre }}</span>
+                  <div class="text-xs text-slate-400">Rol #{{ usuario.id_rol }}</div>
+                </td>
+
+                <td class="px-5 py-4 text-slate-600">{{ usuario.dependenciaNombre }}</td>
+
+                <td class="px-5 py-4">
+                  <div class="font-medium text-slate-700">{{ usuario.num_identificacion }}</div>
+                  <div class="text-xs text-slate-400">{{ usuario.tipo_identificacion }}</div>
+                </td>
+
+                <td class="px-5 py-4 text-slate-600">{{ usuario.correo }}</td>
+
+                <td class="px-5 py-4">
+                  @if (usuario.estado === 'Activo') {
+                    <span class="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                      Activo
+                    </span>
+                  } @else {
+                    <span class="inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">
+                      {{ usuario.estado }}
+                    </span>
+                  }
+                </td>
+
+                <td class="px-5 py-4 text-slate-600">{{ usuario.telefono }}</td>
+
+                <td class="px-5 py-4">
+                  <div class="flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      (click)="editarUsuario(usuario)"
+                      title="Editar"
+                      class="text-slate-500 hover:text-green-700 transition bg-transparent border-0 cursor-pointer text-base">
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      (click)="eliminarUsuario(usuario)"
+                      title="Eliminar"
+                      class="text-slate-500 hover:text-red-600 transition bg-transparent border-0 cursor-pointer text-base">
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="px-6 py-10 text-center text-slate-500">
+                  No hay usuarios registrados con los filtros seleccionados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- FOOTER TABLA -->
+      <div class="flex items-center justify-between px-5 py-4 border-t border-slate-100 text-xs text-slate-500">
+        <span>Mostrando {{ usuariosFiltrados.length }} usuarios registrados</span>
+
+        <div class="flex items-center gap-2">
+          <button type="button" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 border-0 bg-transparent cursor-pointer">‹</button>
+          <button type="button" class="w-8 h-8 rounded-md bg-[#2fa300] text-white font-bold border-0 cursor-pointer">1</button>
+          <button type="button" class="w-8 h-8 rounded-md text-slate-500 hover:bg-slate-100 border-0 bg-transparent cursor-pointer">›</button>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <!-- ===================== VISTA FORMULARIO USUARIO (usuariosForm.html) ===================== -->
+    <section class="mb-5">
+      <h1 class="odin-page-title">
+        {{ id_usuario ? 'Editar Usuario' : 'Nuevo Usuario' }}
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Gestión institucional de usuarios del sistema ODIN
+      </p>
+    </section>
+
+    <form (ngSubmit)="guardarUsuario()">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <!-- INFORMACIÓN PRINCIPAL -->
+        <section class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <h2 class="text-sm font-extrabold text-slate-900 uppercase flex items-center gap-2 m-0">
+              👤 Información del Usuario
+            </h2>
+          </div>
+
+          <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Nombre completo
+              </label>
+              <input
+                type="text"
+                name="nombre"
+                [(ngModel)]="nombre"
+                required
+                placeholder="Nombre / Razón social"
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Rol
+              </label>
+              <select
+                name="id_rol"
+                [(ngModel)]="id_rol"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+                @for (r of rolesCatalogo; track r.id) {
+                  <option [value]="r.id">{{ r.nombre }} (ID: {{ r.id }})</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Dependencia
+              </label>
+              <select
+                name="id_dependencia"
+                [(ngModel)]="id_dependencia"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+                @for (d of odinData.dependencias; track d.id_dependencia) {
+                  <option [value]="d.id_dependencia">{{ d.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Tipo de identificación
+              </label>
+              <select
+                name="tipo_identificacion"
+                [(ngModel)]="tipo_identificacion"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+                <option value="CC">CC</option>
+                <option value="CE">CE</option>
+                <option value="NIT">NIT</option>
+                <option value="TI">TI</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Número de identificación
+              </label>
+              <input
+                type="text"
+                name="num_identificacion"
+                [(ngModel)]="num_identificacion"
+                required
+                placeholder="Número de identificación"
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+            </div>
+          </div>
+        </section>
+
+        <!-- CONTACTO Y ACCESO -->
+        <section class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <h2 class="text-sm font-extrabold text-slate-900 uppercase flex items-center gap-2 m-0">
+              🔐 Contacto y Acceso
+            </h2>
+          </div>
+
+          <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Correo electrónico
+              </label>
+              <input
+                type="email"
+                name="correo"
+                [(ngModel)]="correo"
+                required
+                placeholder="correo@ejemplo.com"
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Clave
+              </label>
+              <input
+                type="password"
+                name="password"
+                [(ngModel)]="password"
+                required
+                placeholder="Contraseña"
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Estado
+              </label>
+              <select
+                name="estado"
+                [(ngModel)]="estado"
+                required
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Teléfono
+              </label>
+              <input
+                type="text"
+                name="telefono"
+                [(ngModel)]="telefono"
+                required
+                placeholder="Teléfono de contacto"
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                Dirección
+              </label>
+              <input
+                type="text"
+                name="direccion"
+                [(ngModel)]="direccion"
+                required
+                placeholder="Dirección física"
+                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-green-600 focus:bg-white">
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- BOTONES -->
+      <div class="flex justify-end gap-3 mt-5">
+        <button
+          type="button"
+          (click)="modoFormulario = false"
+          class="rounded-lg border border-green-600 bg-white px-6 py-2.5 text-sm font-semibold text-green-700 hover:bg-green-50 transition cursor-pointer">
+          Limpiar / Volver
+        </button>
+
+        <button
+          type="submit"
+          class="rounded-lg bg-[#168500] px-7 py-2.5 text-sm font-bold text-white hover:bg-[#0f6d00] transition border-0 cursor-pointer">
+          ▶ Guardar Usuario
+        </button>
+      </div>
+    </form>
+  }
+</main>

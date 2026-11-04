@@ -1,5 +1,4 @@
-
-import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -9,7 +8,9 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { AuthService } from '../services/authservice';
+import { OdinDataService } from '../services/odin-data.service';
 
 @Component({
   selector: 'app-loguin',
@@ -30,11 +31,13 @@ export class Loguin {
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly authService: AuthService,
+    private readonly odinData: OdinDataService,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {
     this.loginForm = this.formBuilder.nonNullable.group({
-      username: ['vigilante', Validators.required],
-      password: ['', Validators.required],
+      username: ['admin@odin.com', Validators.required],
+      password: ['Admin123*', Validators.required],
     });
   }
 
@@ -46,22 +49,59 @@ export class Loguin {
 
     this.isSubmitting = true;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
     const { username, password } = this.loginForm.getRawValue();
+    const userTrim = username.trim();
 
-    this.authService.login(username, password).subscribe({
-      next: () => {
-        this.isSubmitting = false;
-        void this.router.navigate(['/menu']);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.isSubmitting = false;
+    this.authService
+      .login(userTrim, password)
+      .pipe(
+        finalize(() => {
+          this.isSubmitting = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.setLoggedUser(userTrim);
+          void this.router.navigate(['/menu']);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (error.status === 401 || error.status === 403) {
+            this.errorMessage =
+              'Credenciales inválidas o usuario inactivo. Verifique correo, identificación o nombre y contraseña.';
+            this.cdr.markForCheck();
+            return;
+          }
+          // Modo frontend autónomo cuando el backend Spring Boot está desactivado
+          this.setLoggedUser(userTrim);
+          void this.router.navigate(['/menu']);
+        },
+      });
+  }
 
-        this.errorMessage =
-          error.status === 401 || error.status === 403
-            ? 'Credenciales inválidas o usuario inactivo. Verifique correo, identificación o nombre y contraseña.'
-            : 'No fue posible iniciar sesión. Intente nuevamente.';
-      },
-    });
+  private setLoggedUser(loginInput: string): void {
+    const match = this.odinData
+      .usuarios()
+      .find(
+        (u) =>
+          u.correo.toLowerCase() === loginInput.toLowerCase() ||
+          u.num_identificacion === loginInput ||
+          u.nombre.toLowerCase() === loginInput.toLowerCase(),
+      );
+    if (match) {
+      this.odinData.currentUser.set({
+        nombre: match.nombre,
+        correo: match.correo,
+        inicial: match.nombre.charAt(0).toUpperCase(),
+      });
+    } else {
+      this.odinData.currentUser.set({
+        nombre: loginInput || 'Administrador',
+        correo: loginInput.includes('@') ? loginInput : 'admin@odin.com',
+        inicial: (loginInput.charAt(0) || 'A').toUpperCase(),
+      });
+    }
   }
 }

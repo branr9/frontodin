@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { finalize } from 'rxjs';
 import { AuthService } from '../services/authservice';
 
 @Component({
@@ -14,6 +15,7 @@ export class Menu {
   constructor(
     private readonly authService: AuthService,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   // [AUTH ANGULAR] Invalida JSESSIONID y vuelve al login de Angular.
@@ -23,14 +25,22 @@ export class Menu {
     }
 
     this.isLoggingOut = true;
-    this.authService.logout().subscribe({
-      next: () => {
-        void this.router.navigate(['/login']);
-      },
-      error: (error: unknown) => {
-        console.error('[AUTH ANGULAR] No se pudo confirmar el cierre de sesión.', error);
-        void this.router.navigate(['/login']);
-      },
-    });
+    this.cdr.markForCheck();
+    this.authService
+      .logout()
+      .pipe(
+        finalize(() => {
+          this.isLoggingOut = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          void this.router.navigate(['/login']);
+        },
+        error: () => {
+          void this.router.navigate(['/login']);
+        },
+      });
   }
 }

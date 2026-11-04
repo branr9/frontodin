@@ -1,1 +1,72 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --sena-green: #39A900;
+  --sena-green-dark: #2f8700;
+  --sena-font: "Inter", "Work Sans", Arial, sans-serif;
+  --odin-green: #39A900;
+  --odin-green-dark: #007832;
+  --odin-blue: #00304D;
+  --odin-bg: #f5f7f8;
+  --odin-border: #dfe5e8;
+  --odin-text: #24323a;
+  --odin-muted: #66757f;
+  --odin-danger: #c62828;
+  --odin-warning: #b26a00;
+  --odin-radius: 12px;
+  --odin-shadow: 0 2px 12px rgba(0, 48, 77, .08);
+}
+
+body {
+  color: var(--odin-text);
+  background: var(--odin-bg);
+  font-family: var(--sena-font);
+  margin: 0;
+}
+
+.odin-odin-logo { display:block; width:auto; height:44px; object-fit:contain; }
+.odin-page-header, .header {
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  margin-bottom:1.25rem; padding:1rem 1.25rem; background:#fff;
+  border:1px solid var(--odin-border); border-radius:var(--odin-radius); box-shadow:var(--odin-shadow);
+}
+.odin-page-title, .header h1 { margin:0; color:var(--odin-blue); font-size:1.45rem; font-weight:700; line-height:1.25; }
+.odin-page-subtitle { margin:.35rem 0 0; font-size:.875rem; color:var(--odin-muted); }
+
+.kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.85rem; margin-bottom:1rem; }
+.kpi { min-height:95px; padding:1rem; border:1px solid var(--odin-border); border-radius:10px; background:#fff; display:block; text-decoration:none; color:inherit; }
+.kpi small { color:var(--odin-muted); font-weight:600; font-size:.75rem; text-transform:uppercase; }
+.kpi h2 { margin:.35rem 0 0; color:var(--odin-blue); font-size:1.75rem; font-weight:800; }
+.kpi.green { border-left:4px solid var(--odin-green); }
+.kpi.yellow { border-left:4px solid #d99b00; }
+.kpi.blue { border-left:4px solid #1976a3; }
+.kpi.red { border-left:4px solid var(--odin-danger); }
+
+@media (max-width: 900px) { .kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width: 640px) { .kpis { grid-template-columns:1fr; } }
+
+/* Modo oscuro ODIN */
+html.dark { color-scheme: dark; }
+html.dark body { background: #0b1220 !important; color: #e2e8f0 !important; }
+html.dark .bg-white,
+html.dark .card,
+html.dark .form-card,
+html.dark .filter-card,
+html.dark .table-wrap,
+html.dark .odin-page-header {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+html.dark .odin-page-title,
+html.dark h1, html.dark h2, html.dark h3 {
+  color: #f8fafc !important;
+}
+html.dark table thead, html.dark table thead th {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+html.dark table tbody td { color: #e2e8f0 !important; border-color: #334155 !important; }
+html.dark input, html.dark select, html.dark textarea {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
