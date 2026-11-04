@@ -1,1 +1,849 @@
-<p>radicaion works!</p>
+<div class="module-page">
+  <!-- KPIs Operativos del Dashboard -->
+  @if (resumen) {
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Radicados</span>
+        <strong class="kpi-value">{{ resumen.totalRadicados }}</strong>
+        <span class="kpi-sub">Histórico registrado en ODIN</span>
+      </div>
+      <div class="kpi-card kpi-warning">
+        <span class="kpi-label">Pendientes / En Trámite</span>
+        <strong class="kpi-value">{{ resumen.pendientes + resumen.enTramite }}</strong>
+        <span class="kpi-sub">{{ resumen.pendientes }} pendientes · {{ resumen.enTramite }} en gestión</span>
+      </div>
+      <div class="kpi-card kpi-success">
+        <span class="kpi-label">Finalizados</span>
+        <strong class="kpi-value">{{ resumen.finalizados }}</strong>
+        <span class="kpi-sub">{{ resumen.finalizadosHoy }} cerrados hoy · {{ resumen.documentosCargados }} docs</span>
+      </div>
+      <div class="kpi-card kpi-danger">
+        <span class="kpi-label">Alertas de Vencimiento</span>
+        <strong class="kpi-value">{{ resumen.vencidos }}</strong>
+        <span class="kpi-sub">{{ resumen.proximosAVencer }} próximos a vencer (3 días)</span>
+      </div>
+    </div>
+  }
+
+  @if (mensajeExito) {
+    <div class="alert alert-success">
+      <span>✔ {{ mensajeExito }}</span>
+      <button type="button" class="alert-close" (click)="mensajeExito = ''">✕</button>
+    </div>
+  }
+  @if (mensajeError) {
+    <div class="alert alert-danger">
+      <span>⚠ {{ mensajeError }}</span>
+      <button type="button" class="alert-close" (click)="mensajeError = ''">✕</button>
+    </div>
+  }
+
+  <!-- ========================================================= -->
+  <!-- VISTA DE DETALLE Y LÍNEA TEMPORAL UNIFICADA               -->
+  <!-- (Igual que radicado-detalle.html del Gestor Documental)   -->
+  <!-- ========================================================= -->
+  @if (radicadoDetalle) {
+    <section class="card-panel detalle-panel">
+      <div class="panel-header">
+        <div>
+          <h2 class="rad-title-lg">
+            📄 {{ radicadoDetalle.numero_radicado }} — {{ radicadoDetalle.asunto }}
+          </h2>
+          <p>Detalle integral del radicado, línea temporal unificada, documentos, firmas y observaciones.</p>
+        </div>
+        <div class="header-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="abrirComprobante(radicadoDetalle.id_radicado)"
+          >
+            🖨 Imprimir comprobante PDF QR
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="editar(radicadoDetalle); cerrarDetalle()"
+          >
+            ✏️ Editar radicado
+          </button>
+          <button type="button" class="btn btn-del-outline" (click)="cerrarDetalle()">
+            Cerrar detalle ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Flujo visual de la experiencia -->
+      <div class="flow-bar">
+        Radicado <span>→</span> Línea temporal <span>→</span> Eventos <span>→</span> Usuario <span>→</span> Dependencia <span>→</span> Estado <span>→</span> Documento <span>→</span> Observación
+      </div>
+
+      <!-- Datos principales del radicado -->
+      <div class="subcard" style="margin-bottom: 16px">
+        <div class="subcard-header">
+          <h3>📋 DATOS DEL RADICADO</h3>
+        </div>
+        <div class="subcard-body detail-grid-2">
+          <div>
+            <span class="detail-label">Estado</span>
+            <span class="badge badge-status">{{ nombreEstado(radicadoDetalle.id_estado, radicadoDetalle) }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Prioridad</span>
+            <strong>{{ radicadoDetalle.prioridad || 'NORMAL' }}</strong>
+          </div>
+          <div>
+            <span class="detail-label">Fecha radicación</span>
+            <span>{{ radicadoDetalle.fecha_radicado || '—' }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Vencimiento</span>
+            <span>{{ radicadoDetalle.fecha_vencimiento || radicadoDetalle.fecha_limite || 'Sin fecha' }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Días restantes</span>
+            @if (radicadoDetalle.diasRestantes === null || radicadoDetalle.diasRestantes === undefined) {
+              <span>—</span>
+            } @else if (radicadoDetalle.diasRestantes > 3) {
+              <span class="plazo-ok">{{ radicadoDetalle.diasRestantes }} días</span>
+            } @else if (radicadoDetalle.diasRestantes >= 0) {
+              <span class="plazo-alerta">{{ radicadoDetalle.diasRestantes }} días (Próximo a vencer)</span>
+            } @else {
+              <span class="plazo-vencido">Vencido hace {{ radicadoDetalle.diasRestantes * -1 }} días</span>
+            }
+          </div>
+          <div>
+            <span class="detail-label">Remitente</span>
+            <strong>{{ radicadoDetalle.remitente || 'Anónimo' }}</strong>
+          </div>
+          <div>
+            <span class="detail-label">Dependencia Destino</span>
+            <span>{{ nombreDependencia(radicadoDetalle.id_dependencia) }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Funcionario Responsable</span>
+            <span>{{ nombreUsuario(radicadoDetalle.id_usuario) }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Trámite</span>
+            <span>{{ nombreTramite(radicadoDetalle.id_tramite, radicadoDetalle) }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Serie / Subserie (CCD)</span>
+            <span>{{ (radicadoDetalle.codigo_serie || '-') + ' / ' + (radicadoDetalle.codigo_subserie || '-') }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Fecha de cierre</span>
+            <span>{{ radicadoDetalle.fecha_cierre || 'Abierto' }}</span>
+          </div>
+          <div>
+            <span class="detail-label">Tipo / Canal</span>
+            <span>{{ (radicadoDetalle.tipo_radicado || 'ENTRADA') + ' · ' + (radicadoDetalle.medio_recepcion || '-') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Línea Temporal Unificada -->
+      <div class="subcard" style="margin-bottom: 16px">
+        <div class="subcard-header">
+          <h3>⏱ LÍNEA TEMPORAL DE SEGUIMIENTO</h3>
+        </div>
+        <div class="subcard-body">
+          <div class="tl-legend">
+            <span><i style="background: #39a900"></i>Radicación</span>
+            <span><i style="background: #2563eb"></i>Historial</span>
+            <span><i style="background: #d97706"></i>Observación</span>
+            <span><i style="background: #7c3aed"></i>Documento / Anexo</span>
+            <span><i style="background: #0d9488"></i>Firma</span>
+            <span><i style="background: #e11d48"></i>Reasignación</span>
+          </div>
+
+          @if (timelineDetalle.length === 0) {
+            <p class="empty-msg">Aún no hay eventos registrados para este radicado.</p>
+          } @else {
+            <ul class="timeline">
+              @for (ev of timelineDetalle; track $index) {
+                <li class="tl-item" [ngClass]="ev.claseColor">
+                  <span class="tl-dot"></span>
+                  <div class="tl-card">
+                    <div class="tl-head">
+                      <span class="tl-tipo">{{ ev.tipo }}</span>
+                      <span class="tl-titulo">{{ ev.titulo }}</span>
+                      <span class="tl-fecha">{{ ev.fechaTexto }}</span>
+                    </div>
+                    @if (ev.descripcion) {
+                      <p class="tl-desc">{{ ev.descripcion }}</p>
+                    }
+                    <div class="tl-meta">
+                      @if (ev.usuario && ev.usuario !== '—') {
+                        <span>👤 <strong>{{ ev.usuario }}</strong></span>
+                      }
+                      @if (ev.meta) {
+                        <span>{{ ev.meta }}</span>
+                      }
+                    </div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <div class="detail-two-cols">
+        <!-- Agregar observación -->
+        <div class="subcard">
+          <div class="subcard-header">
+            <h3>💬 AGREGAR OBSERVACIÓN</h3>
+          </div>
+          <div class="subcard-body">
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <textarea
+                rows="2"
+                [(ngModel)]="nuevaObservacionDetalle"
+                placeholder="Escriba la observación técnica o seguimiento..."
+                class="detail-textarea"
+              ></textarea>
+              <div style="display: flex; justify-content: flex-end">
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [disabled]="guardandoObsDetalle || !nuevaObservacionDetalle.trim()"
+                  (click)="agregarObservacionEnDetalle()"
+                >
+                  {{ guardandoObsDetalle ? 'Guardando...' : 'Guardar observación' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Firmas / Solicitudes de Firma -->
+        <div class="subcard">
+          <div class="subcard-header">
+            <h3>✍️ FIRMAS / SOLICITUDES DE FIRMA ({{ firmasDetalle.length }})</h3>
+          </div>
+          <div class="subcard-body">
+            <div class="firma-form-row">
+              <select [(ngModel)]="firmaUsuarioId" class="detail-select">
+                <option [ngValue]="null">Usuario de sesión</option>
+                @for (u of usuarios; track u.id_usuario) {
+                  <option [ngValue]="u.id_usuario">{{ u.nombre }}</option>
+                }
+              </select>
+              <input
+                type="text"
+                [(ngModel)]="firmaObservacion"
+                placeholder="Observación de firma (opcional)"
+                class="detail-input"
+              />
+              <button
+                type="button"
+                class="btn btn-primary"
+                [disabled]="guardandoFirma"
+                (click)="registrarFirmaEnDetalle()"
+              >
+                Solicitar firma
+              </button>
+            </div>
+
+            @if (firmasDetalle.length > 0) {
+              <table class="odin-table" style="margin-top: 10px">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Firmante</th>
+                    <th>Estado</th>
+                    <th>Observación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (f of firmasDetalle; track f.idFirma) {
+                    <tr>
+                      <td>{{ formatearFecha(f.fechaFirma) }}</td>
+                      <td>{{ nombreUsuario(f.idUsuario) }}</td>
+                      <td><span class="badge badge-outline">{{ f.estado }}</span></td>
+                      <td>{{ f.observacion || f.hashDocumento || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Documentos Asociados al Radicado -->
+      <div class="subcard" style="margin-top: 16px">
+        <div class="subcard-header" style="display: flex; justify-content: space-between; align-items: center">
+          <h3>📎 DOCUMENTOS Y ANEXOS ASOCIADOS ({{ documentosDetalle.length }})</h3>
+          <label class="btn-sm btn-edit" style="cursor: pointer; margin: 0">
+            {{ subiendoArchivoDetalle ? 'Subiendo...' : '➕ Adjuntar archivo(s)' }}
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.jpg,.png,.xlsx"
+              style="display: none"
+              (change)="subirDocumentoEnDetalle($event)"
+            />
+          </label>
+        </div>
+        <div class="subcard-body">
+          @if (documentosDetalle.length === 0) {
+            <p class="empty-msg" style="padding: 10px 0">No hay documentos adjuntos registrados en este radicado.</p>
+          } @else {
+            <table class="odin-table">
+              <thead>
+                <tr>
+                  <th>Nombre del Archivo</th>
+                  <th>Tipo</th>
+                  <th>Fecha Subida</th>
+                  <th>Tamaño</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (d of documentosDetalle; track d.id_documento) {
+                  <tr>
+                    <td><strong>{{ d.nombre || d.nombre_archivo }}</strong></td>
+                    <td>{{ d.tipo || '—' }}</td>
+                    <td>{{ formatearFecha(d.fecha_subida) }}</td>
+                    <td>{{ d.tamano ? (d.tamano / 1024 | number: '1.1-1') + ' KB' : '—' }}</td>
+                    <td>
+                      <button
+                        type="button"
+                        class="btn-sm btn-pdf"
+                        (click)="descargarDocumento(d.id_documento)"
+                      >
+                        ⬇ Ver / Descargar
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- ========================================================= -->
+  <!-- FORMULARIO COMPLETO DE RADICACIÓN DOCUMENTAL              -->
+  <!-- (RF-04 a RF-23 · Igual a radicacion_Documental.html)      -->
+  <!-- ========================================================= -->
+  <section class="card-panel">
+    <div class="panel-header">
+      <div>
+        <h2>{{ editandoId ? '✏️ Editar Radicado #' + editandoId : '📝 Registrar Radicado Documental' }}</h2>
+        <p>Formulario completo · RF-04 a RF-23 (incluye radicación anónima, forma de respuesta, clasificación CCD/TRD y carga de anexos).</p>
+      </div>
+      <div class="header-actions">
+        @if (editandoId) {
+          <button type="button" class="btn btn-secondary" (click)="cancelarEdicion()">
+            Cancelar edición
+          </button>
+        }
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="mostrarFormulario = !mostrarFormulario"
+        >
+          {{ mostrarFormulario ? '▲ Ocultar formulario' : '▼ Mostrar formulario' }}
+        </button>
+      </div>
+    </div>
+
+    @if (mostrarFormulario) {
+      <form class="rad-form" (ngSubmit)="guardarRadicado()">
+        <!-- SECCIÓN 1: TIPO Y CANAL -->
+        <div class="subcard">
+          <div class="subcard-header">
+            <h3>1. TIPO Y CANAL DE RECEPCIÓN</h3>
+          </div>
+          <div class="subcard-body">
+            <div class="form-grid-4">
+              <div class="form-field">
+                <label>TIPO DE RADICACIÓN *</label>
+                <select [(ngModel)]="form.tipo_radicado" name="tipo_radicado" required>
+                  <option value="ENTRADA">Entrada (E-)</option>
+                  <option value="SALIDA">Salida (S-)</option>
+                  <option value="INTERNO">Interno (I-)</option>
+                </select>
+                <span class="field-hint">El consecutivo se genera automáticamente según el tipo y vigencia (RF-05, RF-06).</span>
+              </div>
+
+              <div class="form-field">
+                <label>CANAL DE RECEPCIÓN *</label>
+                <select [(ngModel)]="form.medio_recepcion" name="medio_recepcion" required>
+                  <option value="FISICO">Físico / Ventanilla</option>
+                  <option value="CORREO">Correo electrónico</option>
+                  <option value="WEB">Portal web / Sede electrónica</option>
+                  <option value="OTRO">Mensajería certificada / Otro</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>TIPO DE DOCUMENTO</label>
+                <select [(ngModel)]="form.tipoDocumento" name="tipoDocumento">
+                  <option value="OFICIO">Oficio</option>
+                  <option value="MEMORANDO">Memorando</option>
+                  <option value="PETICION">Derecho de petición</option>
+                  <option value="QUEJA">Queja / Reclamo</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>TRÁMITE / TIPO DE SOLICITUD *</label>
+                <select
+                  [(ngModel)]="form.id_tramite"
+                  name="id_tramite"
+                  (change)="onTramiteChange()"
+                  required
+                >
+                  <option [ngValue]="null">Seleccione...</option>
+                  @for (t of tramites; track t.idTramite) {
+                    <option [ngValue]="t.idTramite">
+                      {{ t.nombre }} ({{ t.diasRespuesta || 15 }} días)
+                    </option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: REMITENTE (RF-09 Radicación Anónima y RF-14 Forma de Respuesta) -->
+        <div class="subcard">
+          <div class="subcard-header">
+            <h3>2. DATOS DEL REMITENTE</h3>
+          </div>
+          <div class="subcard-body">
+            <div class="anon-box">
+              <label class="anon-check-label">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="form.anonimo"
+                  name="anonimo"
+                  (change)="onAnonimoChange()"
+                />
+                <span>Radicación anónima (sin datos del remitente) — RF-09</span>
+              </label>
+            </div>
+
+            <div class="form-grid-3" [class.disabled-area]="form.anonimo">
+              <div class="form-field">
+                <label>NOMBRE / RAZÓN SOCIAL {{ form.anonimo ? '' : '*' }}</label>
+                <input
+                  type="text"
+                  [(ngModel)]="form.remitente"
+                  name="remitente"
+                  [disabled]="form.anonimo"
+                  placeholder="Nombre completo o entidad remitente"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>NÚMERO DE IDENTIFICACIÓN</label>
+                <input
+                  type="text"
+                  [(ngModel)]="form.numeroIdentificacion"
+                  name="numeroIdentificacion"
+                  [disabled]="form.anonimo"
+                  placeholder="CC / NIT / CE"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>CORREO ELECTRÓNICO</label>
+                <input
+                  type="email"
+                  [(ngModel)]="form.correo"
+                  name="correo"
+                  [disabled]="form.anonimo"
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>TELÉFONO</label>
+                <input
+                  type="text"
+                  [(ngModel)]="form.telefono"
+                  name="telefono"
+                  [disabled]="form.anonimo"
+                  placeholder="3001234567"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>CIUDAD / DIRECCIÓN</label>
+                <input
+                  type="text"
+                  [(ngModel)]="form.ciudad"
+                  name="ciudad"
+                  [disabled]="form.anonimo"
+                  placeholder="Ej: Santiago de Cali"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>FORMA DE RESPUESTA PREFERIDA * (RF-14)</label>
+                <select [(ngModel)]="form.formaRespuesta" name="formaRespuesta" required>
+                  <option value="ELECTRONICA">Electrónica (correo)</option>
+                  <option value="FISICA">Física (correspondencia)</option>
+                  <option value="PRESENCIAL">Presencial / ventanilla</option>
+                  <option value="NO_APLICA">No aplica / anónima</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: ASIGNACIÓN Y CLASIFICACIÓN (CCD / TRD) -->
+        <div class="subcard">
+          <div class="subcard-header">
+            <h3>3. ASIGNACIÓN Y CLASIFICACIÓN (CCD / TRD)</h3>
+          </div>
+          <div class="subcard-body">
+            <div class="form-grid-3">
+              <div class="form-field">
+                <label>DEPENDENCIA DESTINO *</label>
+                <select [(ngModel)]="form.id_dependencia" name="id_dependencia" required>
+                  <option [ngValue]="null">Seleccione dependencia...</option>
+                  @for (d of dependencias; track d.id_dependencia) {
+                    <option [ngValue]="d.id_dependencia">{{ d.nombre }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>RESPONSABLE (USUARIO)</label>
+                <select [(ngModel)]="form.id_usuario" name="id_usuario">
+                  <option [ngValue]="null">Asignar después / Usuario actual</option>
+                  @for (u of usuarios; track u.id_usuario) {
+                    <option [ngValue]="u.id_usuario">{{ u.nombre }} ({{ u.correo }})</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>SERIE DOCUMENTAL (CCD)</label>
+                <select
+                  [(ngModel)]="form.codigo_serie"
+                  name="codigo_serie"
+                  (change)="onSerieChange()"
+                >
+                  <option value="">Seleccione...</option>
+                  @for (s of series; track s.id_serie) {
+                    <option [value]="s.codigo_serie">{{ s.codigo_serie }} - {{ s.nombre_serie }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>SUBSERIE DOCUMENTAL (CCD)</label>
+                <select [(ngModel)]="form.codigo_subserie" name="codigo_subserie">
+                  <option value="">Seleccione...</option>
+                  @for (sub of subseriesFiltradas; track sub.id_subserie) {
+                    <option [value]="sub.codigo_subserie">
+                      {{ sub.codigo_subserie }} - {{ sub.nombre_subserie }}
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>PRIORIDAD</label>
+                <select [(ngModel)]="form.prioridad" name="prioridad">
+                  <option value="NORMAL">Normal</option>
+                  <option value="MEDIA">Media</option>
+                  <option value="ALTA">Alta</option>
+                  <option value="URGENTE">Urgente</option>
+                  <option value="BAJA">Baja</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>FECHA DE VENCIMIENTO (ESTIMADA)</label>
+                <input type="date" [(ngModel)]="form.fecha_vencimiento" name="fecha_vencimiento" />
+                <span class="field-hint">Se calcula automáticamente según días de respuesta del trámite si se deja vacío.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 4: CONTENIDO DEL DOCUMENTO Y ANEXOS -->
+        <div class="subcard">
+          <div class="subcard-header">
+            <h3>4. CONTENIDO DEL DOCUMENTO Y ANEXOS</h3>
+          </div>
+          <div class="subcard-body">
+            <div class="form-field" style="margin-bottom: 14px">
+              <label>ASUNTO *</label>
+              <input
+                type="text"
+                [(ngModel)]="form.asunto"
+                name="asunto"
+                maxlength="500"
+                placeholder="Asunto ejecutivo del documento radicado"
+                required
+              />
+            </div>
+
+            <div class="form-field" style="margin-bottom: 14px">
+              <label>DESCRIPCIÓN / OBSERVACIONES</label>
+              <textarea
+                rows="3"
+                [(ngModel)]="form.descripcion"
+                name="descripcion"
+                placeholder="Descripción breve, contenido o notas de radicación"
+              ></textarea>
+            </div>
+
+            <div class="form-grid-4">
+              <div class="form-field">
+                <label>NÚMERO DE FOLIOS</label>
+                <input
+                  type="number"
+                  [(ngModel)]="form.numeroFolios"
+                  name="numeroFolios"
+                  min="0"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>SOPORTE</label>
+                <select [(ngModel)]="form.soporte" name="soporte">
+                  <option value="DIGITAL">Digital</option>
+                  <option value="FISICO">Físico</option>
+                  <option value="HIBRIDO">Híbrido</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>CONFIDENCIALIDAD</label>
+                <select [(ngModel)]="form.confidencialidad" name="confidencialidad">
+                  <option value="PUBLICA">Pública</option>
+                  <option value="RESERVADA">Reservada</option>
+                  <option value="CLASIFICADA">Clasificada</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>ANEXOS (ARCHIVOS ADJUNTOS)</label>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.png,.xlsx"
+                  (change)="onFileSelected($event)"
+                />
+                <span class="field-hint">PDF, Word, Excel o Imágenes (máx. 20MB).</span>
+              </div>
+            </div>
+
+            @if (archivosSeleccionados.length > 0) {
+              <div class="selected-files-list">
+                <strong>📎 Archivos listos para adjuntar ({{ archivosSeleccionados.length }}):</strong>
+                <div class="file-chips">
+                  @for (f of archivosSeleccionados; track $index) {
+                    <span class="file-chip">
+                      {{ f.name }} ({{ (f.size / 1024) | number: '1.0-0' }} KB)
+                      <button type="button" (click)="quitarArchivoSeleccionado($index)">✕</button>
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="cancelarEdicion()">
+            Limpiar formulario
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="guardando">
+            {{
+              guardando
+                ? 'Procesando radicación...'
+                : editandoId
+                ? '💾 Guardar Cambios del Radicado'
+                : '▶ Radicar Documento Oficial'
+            }}
+          </button>
+        </div>
+      </form>
+    }
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- TABLA DE DOCUMENTOS RADICADOS                             -->
+  <!-- ========================================================= -->
+  <section class="card-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Documentos Radicados ({{ radicadosFiltrados.length }})</h2>
+        <p>Inspeccione la línea temporal unificada, descargue el comprobante PDF con QR o edite la radicación.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-sm btn-pdf" (click)="exportarReporte('pdf')">
+          ⬇ PDF
+        </button>
+        <button type="button" class="btn-sm btn-edit" (click)="exportarReporte('xlsx')">
+          ⬇ Excel
+        </button>
+        <button type="button" class="btn-sm btn-secondary" (click)="exportarReporte('csv')">
+          ⬇ CSV
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="cargarDatos()">
+          ↻ Actualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- Barra de búsqueda y filtro rápido -->
+    <div class="table-filters-row">
+      <div class="search-box">
+        <input
+          type="text"
+          [(ngModel)]="filtroTexto"
+          (ngModelChange)="paginaActual = 1"
+          placeholder="🔍 Buscar por N° radicado, remitente, asunto, dependencia o responsable..."
+        />
+      </div>
+      <div class="type-filter">
+        <select [(ngModel)]="filtroTipo" (ngModelChange)="paginaActual = 1">
+          <option value="">Todos los tipos (Entrada / Salida / Interno)</option>
+          <option value="ENTRADA">ENTRADA (E-)</option>
+          <option value="SALIDA">SALIDA (S-)</option>
+          <option value="INTERNO">INTERNO (I-)</option>
+        </select>
+      </div>
+    </div>
+
+    @if (cargando) {
+      <p class="empty-msg">Cargando radicados desde Supabase...</p>
+    } @else if (radicadosFiltrados.length === 0) {
+      <p class="empty-msg">No se encontraron radicados registrados con estos criterios.</p>
+    } @else {
+      <div class="table-responsive">
+        <table class="odin-table">
+          <thead>
+            <tr>
+              <th>N° Radicado</th>
+              <th>Fecha</th>
+              <th>Tipo / Canal</th>
+              <th>Remitente</th>
+              <th>Asunto</th>
+              <th>Trámite / Dependencia</th>
+              <th>Responsable</th>
+              <th>Estado</th>
+              <th>Vencimiento</th>
+              <th style="text-align: center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of radicadosPaginados; track r.id_radicado) {
+              <tr>
+                <td>
+                  <strong class="rad-number" (click)="verDetalle(r)" style="cursor: pointer">
+                    {{ r.numero_radicado }}
+                  </strong>
+                </td>
+                <td>{{ r.fecha_radicado }}</td>
+                <td>
+                  <span class="badge badge-outline">{{ r.tipo_radicado || 'ENTRADA' }}</span>
+                  <div class="text-muted">{{ r.medio_recepcion || '' }}</div>
+                </td>
+                <td>{{ r.remitente || 'Anónimo' }}</td>
+                <td class="asunto-cell">{{ r.asunto }}</td>
+                <td>
+                  <div><strong>{{ nombreTramite(r.id_tramite, r) }}</strong></div>
+                  <small class="text-muted">{{ nombreDependencia(r.id_dependencia) }}</small>
+                </td>
+                <td>{{ nombreUsuario(r.id_usuario) }}</td>
+                <td>
+                  <span class="badge badge-status">{{ nombreEstado(r.id_estado, r) }}</span>
+                </td>
+                <td>
+                  <div>{{ r.fecha_vencimiento || r.fecha_limite || '—' }}</div>
+                  @if (r.diasRestantes !== null && r.diasRestantes !== undefined) {
+                    <small
+                      class="plazo-tag"
+                      [class.plazo-vencido]="r.diasRestantes < 0"
+                      [class.plazo-alerta]="r.diasRestantes >= 0 && r.diasRestantes <= 3"
+                      [class.plazo-ok]="r.diasRestantes > 3"
+                    >
+                      {{ r.diasRestantes < 0 ? 'Vencido (' + r.diasRestantes + 'd)' : r.diasRestantes + ' días rest.' }}
+                    </small>
+                  }
+                </td>
+                <td>
+                  <div class="row-actions" style="justify-content: center">
+                    <button
+                      type="button"
+                      class="btn-sm btn-detail"
+                      title="Ver Detalle y Línea Temporal"
+                      (click)="verDetalle(r)"
+                    >
+                      🔍 Detalle
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-sm btn-pdf"
+                      title="Descargar Comprobante PDF con QR"
+                      (click)="abrirComprobante(r.id_radicado)"
+                    >
+                      PDF QR
+                    </button>
+                    <button type="button" class="btn-sm btn-edit" (click)="editar(r)">
+                      ✏️
+                    </button>
+                    <button type="button" class="btn-sm btn-del" (click)="eliminar(r)">
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      <div class="table-footer">
+        <span>
+          Mostrando {{ radicadosPaginados.length }} de {{ radicadosFiltrados.length }} radicados
+        </span>
+        <div class="pagination-btns">
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="paginaActual <= 1"
+            (click)="cambiarPagina(paginaActual - 1)"
+          >
+            ‹
+          </button>
+          @for (p of paginasArray; track p) {
+            <button
+              type="button"
+              class="page-btn"
+              [class.active]="p === paginaActual"
+              (click)="cambiarPagina(p)"
+            >
+              {{ p }}
+            </button>
+          }
+          <button
+            type="button"
+            class="page-btn"
+            [disabled]="paginaActual >= totalPaginas"
+            (click)="cambiarPagina(paginaActual + 1)"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</div>

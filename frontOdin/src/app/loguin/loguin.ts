@@ -60,6 +60,8 @@ export class Loguin {
         this.errorMessage =
           error.status === 401 || error.status === 403
             ? 'Credenciales inválidas o usuario inactivo. Verifique correo, identificación o nombre y contraseña.'
+            : error.status === 0
+            ? 'No fue posible conectar con el servidor backend (puerto 8080). Verifique que esté iniciado.'
             : 'No fue posible iniciar sesión. Intente nuevamente.';
       },
     });

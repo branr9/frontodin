@@ -1,1 +1,345 @@
-<p>gestion-tramites works!</p>
+<div class="tramites-page">
+  <!-- Selector de Pestañas -->
+  <div class="tabs-bar">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="tabActiva === 'operativa'"
+      (click)="tabActiva = 'operativa'"
+    >
+      ▣ Bandeja Operativa de Radicados (Traslados, Estados y Cierres)
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="tabActiva === 'catalogo'"
+      (click)="tabActiva = 'catalogo'"
+    >
+      ⚙ Catálogo Oficial de Tipos de Trámite ({{ tramites.length }})
+    </button>
+  </div>
+
+  @if (mensajeExito) {
+    <div class="alert alert-success">{{ mensajeExito }}</div>
+  }
+  @if (mensajeError) {
+    <div class="alert alert-danger">{{ mensajeError }}</div>
+  }
+
+  <!-- TAB 1: BANDEJA OPERATIVA -->
+  @if (tabActiva === 'operativa') {
+    @if (radicadoAccion) {
+      <section class="card-panel action-modal">
+        <div class="panel-header">
+          <div>
+            <h2>
+              @if (tipoAccion === 'estado') { Cambiar Estado del Radicado }
+              @if (tipoAccion === 'reasignar') { Trasladar / Reasignar Radicado }
+              @if (tipoAccion === 'cerrar') { Finalizar y Cerrar Radicado }
+              — <span class="rad-code">{{ radicadoAccion.numero_radicado }}</span>
+            </h2>
+            <p>{{ radicadoAccion.asunto }} ({{ radicadoAccion.remitente }})</p>
+          </div>
+          <button type="button" class="btn btn-secondary" (click)="radicadoAccion = null">Cancelar</button>
+        </div>
+
+        <form class="action-form" (ngSubmit)="ejecutarAccionOperativa()">
+          @if (tipoAccion === 'estado') {
+            <div class="form-field">
+              <label>Nuevo Estado Operativo *</label>
+              <select [(ngModel)]="nuevoEstadoId" name="nuevoEstadoId" required>
+                @for (e of estados; track e.id_estado) {
+                  <option [ngValue]="e.id_estado">{{ e.nombre }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          @if (tipoAccion === 'reasignar') {
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label>Dependencia Destino *</label>
+                <select [(ngModel)]="nuevaDependenciaId" name="nuevaDependenciaId" required>
+                  <option [ngValue]="null">-- Seleccione dependencia --</option>
+                  @for (d of dependencias; track d.id_dependencia) {
+                    <option [ngValue]="d.id_dependencia">{{ d.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Nuevo Funcionario Responsable *</label>
+                <select [(ngModel)]="nuevoUsuarioId" name="nuevoUsuarioId" required>
+                  <option [ngValue]="null">-- Seleccione responsable --</option>
+                  @for (u of usuarios; track u.id_usuario) {
+                    <option [ngValue]="u.id_usuario">{{ u.nombre }} ({{ u.correo }})</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+
+          @if (tipoAccion === 'cerrar') {
+            <div class="form-field">
+              <label>Observación o Acto de Cierre / Respuesta Final</label>
+              <textarea
+                rows="3"
+                [(ngModel)]="observacionCierre"
+                name="observacionCierre"
+                placeholder="Indique el resumen de la respuesta emitida o motivo de finalización del trámite..."
+              ></textarea>
+            </div>
+          }
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Confirmar Operación</button>
+          </div>
+        </form>
+      </section>
+    }
+
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Gestión de Trámites en Curso ({{ radicados.length }})</h2>
+          <p>Administre los plazos legales de respuesta, reasigne responsables o cierre trámites atendidos.</p>
+        </div>
+        <div class="filter-pills">
+          <button
+            type="button"
+            class="pill"
+            [class.active]="filtroBandeja === 'todos'"
+            (click)="cargarBandeja('todos')"
+          >
+            Todos
+          </button>
+          <button
+            type="button"
+            class="pill pill-warn"
+            [class.active]="filtroBandeja === 'proximos'"
+            (click)="cargarBandeja('proximos')"
+          >
+            Próximos a Vencer
+          </button>
+          <button
+            type="button"
+            class="pill pill-danger"
+            [class.active]="filtroBandeja === 'vencidos'"
+            (click)="cargarBandeja('vencidos')"
+          >
+            Vencidos
+          </button>
+        </div>
+      </div>
+
+      @if (cargando) {
+        <p class="empty-msg">Cargando bandeja de trámites...</p>
+      } @else if (radicados.length === 0) {
+        <p class="empty-msg">No hay radicados en esta vista.</p>
+      } @else {
+        <div class="table-responsive">
+          <table class="odin-table">
+            <thead>
+              <tr>
+                <th>N° Radicado</th>
+                <th>Remitente / Asunto</th>
+                <th>Tipo de Trámite</th>
+                <th>Dependencia Actual</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+                <th>Plazo / Vencimiento</th>
+                <th>Operaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of radicados; track r.id_radicado) {
+                <tr>
+                  <td><strong class="rad-code">{{ r.numero_radicado }}</strong></td>
+                  <td>
+                    <div><strong>{{ r.remitente }}</strong></div>
+                    <small class="text-muted">{{ r.asunto }}</small>
+                  </td>
+                  <td>{{ r.tramite?.nombre || 'Trámite #' + r.id_tramite }}</td>
+                  <td>{{ nombreDependencia(r.id_dependencia) }}</td>
+                  <td>{{ r.usuario?.nombre || 'Usuario #' + r.id_usuario }}</td>
+                  <td>
+                    <span class="badge-status">{{ r.estado?.nombre || 'Estado #' + r.id_estado }}</span>
+                  </td>
+                  <td>
+                    <div>{{ r.fecha_vencimiento || r.fecha_limite || '—' }}</div>
+                    @if (r.diasRestantes !== null && r.diasRestantes !== undefined) {
+                      <small
+                        [style.color]="r.diasRestantes < 0 ? '#dc2626' : r.diasRestantes <= 3 ? '#d97706' : '#059669'"
+                        style="font-weight: 700"
+                      >
+                        {{ r.diasRestantes < 0 ? 'Vencido (' + r.diasRestantes + 'd)' : r.diasRestantes + ' días' }}
+                      </small>
+                    }
+                  </td>
+                  <td>
+                    <div class="row-actions">
+                      <button type="button" class="btn-op btn-estado" (click)="abrirAccion(r, 'estado')">
+                        Estado
+                      </button>
+                      <button type="button" class="btn-op btn-reasignar" (click)="abrirAccion(r, 'reasignar')">
+                        Reasignar
+                      </button>
+                      <button type="button" class="btn-op btn-cerrar" (click)="abrirAccion(r, 'cerrar')">
+                        Finalizar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- TAB 2: CATÁLOGO DE TIPOS DE TRÁMITE -->
+  @if (tabActiva === 'catalogo') {
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>{{ editandoTramiteId ? 'Editar Tipo de Trámite #' + editandoTramiteId : 'Nuevo Tipo de Trámite (SLA / TRD)' }}</h2>
+          <p>Defina los tiempos legales de respuesta (días hábiles/calendario), prioridad y dependencia responsable por defecto.</p>
+        </div>
+        @if (editandoTramiteId) {
+          <button type="button" class="btn btn-secondary" (click)="cancelarEdicionTramite()">Cancelar</button>
+        }
+      </div>
+
+      <form class="tramite-form" (ngSubmit)="guardarTramite()">
+        <div class="form-grid-3">
+          <div class="form-field">
+            <label>Nombre del Trámite *</label>
+            <input
+              type="text"
+              [(ngModel)]="formTramite.nombre"
+              name="nombre"
+              placeholder="Ej: Derecho de Petición General"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label>Plazo de Respuesta (Días) *</label>
+            <input
+              type="number"
+              [(ngModel)]="formTramite.diasRespuesta"
+              name="diasRespuesta"
+              min="1"
+              max="365"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label>Prioridad por Defecto</label>
+            <select [(ngModel)]="formTramite.prioridadDefault" name="prioridadDefault">
+              <option value="BAJA">BAJA</option>
+              <option value="MEDIA">MEDIA</option>
+              <option value="ALTA">ALTA</option>
+              <option value="URGENTE">URGENTE</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-field">
+            <label>Dependencia Responsable</label>
+            <select [(ngModel)]="formTramite.idDependenciaResponsable" name="idDependenciaResponsable">
+              <option [ngValue]="null">-- Seleccione dependencia --</option>
+              @for (d of dependencias; track d.id_dependencia) {
+                <option [ngValue]="d.id_dependencia">{{ d.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Estado Inicial al Radicar</label>
+            <select [(ngModel)]="formTramite.idEstadoInicial" name="idEstadoInicial">
+              @for (e of estados; track e.id_estado) {
+                <option [ngValue]="e.id_estado">{{ e.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Estado en Catálogo</label>
+            <select [(ngModel)]="formTramite.activo" name="activo">
+              <option [ngValue]="true">ACTIVO</option>
+              <option [ngValue]="false">INACTIVO</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Descripción Normativa / Alcance *</label>
+          <input
+            type="text"
+            [(ngModel)]="formTramite.descripcion"
+            name="descripcion"
+            placeholder="Descripción del trámite y términos legales aplicables"
+            required
+          />
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            {{ editandoTramiteId ? 'Actualizar Trámite' : '+ Guardar Tipo de Trámite' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Catálogo de Trámites Configurados ({{ tramites.length }})</h2>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="odin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre del Trámite</th>
+              <th>Descripción</th>
+              <th>Plazo (Días)</th>
+              <th>Prioridad</th>
+              <th>Dependencia Responsable</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of tramites; track t.idTramite) {
+              <tr>
+                <td><strong>#{{ t.idTramite }}</strong></td>
+                <td><strong>{{ t.nombre }}</strong></td>
+                <td>{{ t.descripcion }}</td>
+                <td><strong>{{ t.diasRespuesta || 15 }} días</strong></td>
+                <td>{{ t.prioridadDefault || 'MEDIA' }}</td>
+                <td>{{ nombreDependencia(t.idDependenciaResponsable) }}</td>
+                <td>
+                  <span class="badge-status" [class.inactive]="!t.activo">
+                    {{ t.activo ? 'ACTIVO' : 'INACTIVO' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="btn-op btn-estado" (click)="editarTramite(t)">Editar</button>
+                    <button type="button" class="btn-op btn-del" (click)="eliminarTramite(t)">✕</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

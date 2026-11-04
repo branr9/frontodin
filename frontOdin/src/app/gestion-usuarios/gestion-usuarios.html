@@ -1,1 +1,689 @@
-<p>gestion-usuarios works!</p>
+<div class="usuarios-page">
+  <!-- KPIs Institucionales -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <span class="kpi-label">Total Usuarios</span>
+      <strong class="kpi-value">{{ usuarios.length }}</strong>
+      <span class="kpi-sub">Funcionarios en directorio</span>
+    </div>
+    <div class="kpi-card kpi-ok">
+      <span class="kpi-label">Usuarios Activos</span>
+      <strong class="kpi-value">{{ totalUsuariosActivos }}</strong>
+      <span class="kpi-sub">Con acceso habilitado</span>
+    </div>
+    <div class="kpi-card kpi-warn">
+      <span class="kpi-label">Usuarios Inactivos</span>
+      <strong class="kpi-value">{{ totalUsuariosInactivos }}</strong>
+      <span class="kpi-sub">Cuentas suspendidas</span>
+    </div>
+    <div class="kpi-card kpi-info">
+      <span class="kpi-label">Roles y Perfiles RBAC</span>
+      <strong class="kpi-value">{{ roles.length }}</strong>
+      <span class="kpi-sub">{{ permisosDisponibles.length }} permisos en catálogo</span>
+    </div>
+  </div>
+
+  <!-- Barra de Pestañas -->
+  <div class="tabs-bar">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="tabActiva === 'usuarios'"
+      (click)="tabActiva = 'usuarios'"
+    >
+      👤 Gestión de Usuarios ({{ usuarios.length }})
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="tabActiva === 'roles'"
+      (click)="tabActiva = 'roles'"
+    >
+      🛡 Gestión de Roles y Permisos RBAC ({{ roles.length }})
+    </button>
+  </div>
+
+  @if (mensajeExito) {
+    <div class="alert alert-success">
+      <span>✔ {{ mensajeExito }}</span>
+      <button type="button" class="alert-close" (click)="mensajeExito = ''">✕</button>
+    </div>
+  }
+  @if (mensajeError) {
+    <div class="alert alert-danger">
+      <span>⚠ {{ mensajeError }}</span>
+      <button type="button" class="alert-close" (click)="mensajeError = ''">✕</button>
+    </div>
+  }
+
+  <!-- ========================================================= -->
+  <!-- PESTAÑA 1: GESTIÓN DE USUARIOS (como usuarios.html / Form) -->
+  <!-- ========================================================= -->
+  @if (tabActiva === 'usuarios') {
+    <!-- Formulario de Nuevo / Editar Usuario en 2 Bloques Institucionales -->
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>
+            {{
+              editandoUsuarioId
+                ? '✏️ Editar Usuario #' + editandoUsuarioId
+                : '➕ Nuevo / Editar Usuario'
+            }}
+          </h2>
+          <p>Gestión institucional de usuarios del sistema ODIN (Información personal, rol, dependencia y credenciales BCrypt).</p>
+        </div>
+        <div class="header-actions">
+          @if (editandoUsuarioId) {
+            <button type="button" class="btn btn-secondary" (click)="cancelarEdicionUsuario()">
+              Limpiar / Cancelar edición
+            </button>
+          }
+          <button
+            type="button"
+            class="btn btn-outline-green"
+            (click)="mostrarFormularioUsuario = !mostrarFormularioUsuario"
+          >
+            {{ mostrarFormularioUsuario ? '▲ Ocultar formulario' : '▼ Mostrar formulario' }}
+          </button>
+        </div>
+      </div>
+
+      @if (mostrarFormularioUsuario) {
+        <form class="user-form" (ngSubmit)="guardarUsuario()">
+          <div class="two-columns-cards">
+            <!-- BLOQUE 1: INFORMACIÓN DEL USUARIO -->
+            <div class="subcard">
+              <div class="subcard-header">
+                <h3>👤 INFORMACIÓN DEL USUARIO</h3>
+              </div>
+              <div class="subcard-body form-grid-2">
+                <div class="form-field col-span-2">
+                  <label>NOMBRE COMPLETO *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formUsuario.nombre"
+                    name="nombre"
+                    placeholder="Nombre completo o razón social"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>ROL *</label>
+                  <select [(ngModel)]="formUsuario.id_rol" name="id_rol" required>
+                    <option [ngValue]="null">Seleccione rol...</option>
+                    @for (r of roles; track r.id_rol) {
+                      <option [ngValue]="r.id_rol">{{ r.nombre }} ({{ r.rol }})</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label>DEPENDENCIA *</label>
+                  <select [(ngModel)]="formUsuario.id_dependencia" name="id_dependencia" required>
+                    <option [ngValue]="null">Seleccione dependencia...</option>
+                    @for (d of dependencias; track d.id_dependencia) {
+                      <option [ngValue]="d.id_dependencia">{{ d.nombre }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label>TIPO DE IDENTIFICACIÓN *</label>
+                  <select [(ngModel)]="formUsuario.tipo_identificacion" name="tipo_identificacion" required>
+                    <option value="CC">CC — Cédula de Ciudadanía</option>
+                    <option value="CE">CE — Cédula de Extranjería</option>
+                    <option value="NIT">NIT — Número Tributario</option>
+                    <option value="TI">TI — Tarjeta de Identidad</option>
+                    <option value="PEP">PEP / PPT</option>
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label>NÚMERO DE IDENTIFICACIÓN *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formUsuario.num_identificacion"
+                    name="num_identificacion"
+                    placeholder="Número de identificación"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- BLOQUE 2: CONTACTO Y ACCESO -->
+            <div class="subcard">
+              <div class="subcard-header">
+                <h3>🔐 CONTACTO Y ACCESO</h3>
+              </div>
+              <div class="subcard-body form-grid-2">
+                <div class="form-field col-span-2">
+                  <label>CORREO ELECTRÓNICO *</label>
+                  <input
+                    type="email"
+                    [(ngModel)]="formUsuario.correo"
+                    name="correo"
+                    placeholder="correo@senacali.edu.co"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>{{ editandoUsuarioId ? 'CLAVE (OPCIONAL)' : 'CLAVE / CONTRASEÑA *' }}</label>
+                  <input
+                    type="password"
+                    [(ngModel)]="formUsuario.password"
+                    name="password"
+                    [placeholder]="editandoUsuarioId ? 'Dejar vacío para conservar actual' : 'Contraseña de acceso'"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>ESTADO *</label>
+                  <select [(ngModel)]="formUsuario.estado" name="estado" required>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label>TELÉFONO *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formUsuario.telefono"
+                    name="telefono"
+                    placeholder="Ej: 3150000000"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>DIRECCIÓN *</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formUsuario.direccion"
+                    name="direccion"
+                    placeholder="Dirección física / Sede"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline-green" (click)="cancelarEdicionUsuario()">
+              Limpiar
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="guardandoUsuario">
+              ▶ {{ guardandoUsuario ? 'Guardando...' : editandoUsuarioId ? 'Actualizar Usuario' : 'Guardar Usuario' }}
+            </button>
+          </div>
+        </form>
+      }
+    </section>
+
+    <!-- Listado y Filtros de Usuarios -->
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Directorio de Usuarios Registrados ({{ usuariosFiltrados.length }})</h2>
+          <p>Administre y rastree el estado de los usuarios registrados en el sistema.</p>
+        </div>
+        <div class="export-buttons">
+          <button type="button" class="btn-export btn-pdf" (click)="exportarUsuarios('pdf')">
+            ⬇ PDF
+          </button>
+          <button type="button" class="btn-export btn-excel" (click)="exportarUsuarios('excel')">
+            ⬇ Excel
+          </button>
+          <button type="button" class="btn btn-secondary" (click)="cargarTodo()">
+            ↻ Actualizar
+          </button>
+        </div>
+      </div>
+
+      <!-- Buscador General -->
+      <div class="search-bar-full">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="filtroUsuario"
+          (ngModelChange)="paginaActualUsuarios = 1"
+          placeholder="Buscar usuario, correo, identificación, rol, dependencia o teléfono..."
+        />
+      </div>
+
+      <!-- Barra de Filtros Multicriterio (igual a usuarios.html) -->
+      <div class="filters-grid">
+        <div class="form-field">
+          <label>TIPO DE IDENTIFICACIÓN</label>
+          <select [(ngModel)]="filtroTipoId" (ngModelChange)="paginaActualUsuarios = 1">
+            <option value="">Todos los tipos</option>
+            <option value="CC">CC</option>
+            <option value="CE">CE</option>
+            <option value="NIT">NIT</option>
+            <option value="TI">TI</option>
+            <option value="PEP">PEP</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label>ESTADO</label>
+          <select [(ngModel)]="filtroEstadoUsuario" (ngModelChange)="paginaActualUsuarios = 1">
+            <option value="">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label>DEPENDENCIA</label>
+          <select [(ngModel)]="filtroDependencia" (ngModelChange)="paginaActualUsuarios = 1">
+            <option [ngValue]="null">Todas las dependencias</option>
+            @for (d of dependencias; track d.id_dependencia) {
+              <option [ngValue]="d.id_dependencia">{{ d.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label>ROL ASIGNADO</label>
+          <div style="display: flex; gap: 8px">
+            <select [(ngModel)]="filtroRol" (ngModelChange)="paginaActualUsuarios = 1" style="flex: 1">
+              <option [ngValue]="null">Todos los roles</option>
+              @for (r of roles; track r.id_rol) {
+                <option [ngValue]="r.id_rol">{{ r.nombre }}</option>
+              }
+            </select>
+            <button type="button" class="btn btn-secondary" (click)="limpiarFiltrosUsuarios()">
+              Limpiar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Usuarios -->
+      @if (cargando) {
+        <div class="empty-box">Cargando directorio de usuarios...</div>
+      } @else if (usuariosFiltrados.length === 0) {
+        <div class="empty-box">No hay usuarios que coincidan con los filtros seleccionados.</div>
+      } @else {
+        <div class="table-responsive">
+          <table class="odin-table">
+            <thead>
+              <tr>
+                <th>USUARIO</th>
+                <th>ROL</th>
+                <th>DEPENDENCIA</th>
+                <th>IDENTIFICACIÓN</th>
+                <th>CORREO</th>
+                <th>ESTADO</th>
+                <th>TELÉFONO / DIRECCIÓN</th>
+                <th style="text-align: center">ACCIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (u of usuariosPaginados; track u.id_usuario) {
+                <tr>
+                  <td>
+                    <div class="user-cell-name">{{ u.nombre }}</div>
+                    <div class="user-cell-id">ID: #{{ u.id_usuario }}</div>
+                  </td>
+                  <td>
+                    <span class="role-chip">{{ nombreRol(u.id_rol) }}</span>
+                  </td>
+                  <td>{{ nombreDependencia(u.id_dependencia) }}</td>
+                  <td>
+                    <div class="user-cell-name">{{ u.num_identificacion }}</div>
+                    <div class="user-cell-id">{{ u.tipo_identificacion }}</div>
+                  </td>
+                  <td>{{ u.correo }}</td>
+                  <td>
+                    <span
+                      class="status-chip"
+                      [class.inactive]="u.estado && u.estado.toLowerCase() !== 'activo'"
+                    >
+                      {{ u.estado || 'Activo' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div>{{ u.telefono || '—' }}</div>
+                    <div class="user-cell-id">{{ u.direccion || '' }}</div>
+                  </td>
+                  <td>
+                    <div class="row-actions" style="justify-content: center">
+                      <button
+                        type="button"
+                        class="btn-sm btn-edit"
+                        title="Editar usuario"
+                        (click)="editarUsuario(u)"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-sm btn-toggle"
+                        [title]="(u.estado || 'Activo') === 'Activo' ? 'Inactivar usuario' : 'Activar usuario'"
+                        (click)="alternarEstadoUsuario(u)"
+                      >
+                        {{ (u.estado || 'Activo') === 'Activo' ? '⏸ Inactivar' : '▶ Activar' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-sm btn-del"
+                        title="Eliminar usuario"
+                        (click)="eliminarUsuario(u)"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer Paginación -->
+        <div class="table-footer">
+          <span>
+            Mostrando {{ usuariosPaginados.length }} de {{ usuariosFiltrados.length }} usuarios registrados
+          </span>
+          <div class="pagination-btns">
+            <button
+              type="button"
+              class="page-btn"
+              [disabled]="paginaActualUsuarios <= 1"
+              (click)="cambiarPaginaUsuarios(paginaActualUsuarios - 1)"
+            >
+              ‹
+            </button>
+            @for (p of paginasUsuariosArray; track p) {
+              <button
+                type="button"
+                class="page-btn"
+                [class.active]="p === paginaActualUsuarios"
+                (click)="cambiarPaginaUsuarios(p)"
+              >
+                {{ p }}
+              </button>
+            }
+            <button
+              type="button"
+              class="page-btn"
+              [disabled]="paginaActualUsuarios >= totalPaginasUsuarios"
+              (click)="cambiarPaginaUsuarios(paginaActualUsuarios + 1)"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ========================================================= -->
+  <!-- PESTAÑA 2: ROLES Y MATRIZ DE PERMISOS (roles.html / Form) -->
+  <!-- ========================================================= -->
+  @if (tabActiva === 'roles') {
+    <!-- Formulario de Rol + Matriz de Permisos (RF-N16 · RF-43 · RF-44) -->
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>{{ editandoRolId ? '✏️ Editar Rol #' + editandoRolId : '➕ Nuevo Rol y Asignación de Permisos' }}</h2>
+          <p>RF-N16 · RF-43 · RF-44 — Datos del rol y asignación visual de permisos funcionales (tabla <code>rol_permisos</code>).</p>
+        </div>
+        @if (editandoRolId) {
+          <button type="button" class="btn btn-secondary" (click)="cancelarEdicionRol()">
+            Cancelar edición
+          </button>
+        }
+      </div>
+
+      <form class="rol-form" (ngSubmit)="guardarRol()">
+        <div class="form-grid-3">
+          <div class="form-field">
+            <label>NOMBRE DEL ROL *</label>
+            <input
+              type="text"
+              [(ngModel)]="formRol.nombre"
+              name="rolNombre"
+              placeholder="Ej: Analista de radicación"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label>CÓDIGO / CLAVE DEL ROL *</label>
+            <input
+              type="text"
+              [(ngModel)]="formRol.rol"
+              name="rolCodigo"
+              placeholder="Ej: ANALISTA"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label>ESTADO</label>
+            <select [(ngModel)]="formRol.estado" name="rolEstado">
+              <option value="Activo">Activo</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Matriz de Permisos Integrada en el Formulario del Rol (igual que rolesForm.html) -->
+        <div class="subcard" style="margin-top: 8px">
+          <div class="subcard-header" style="display: flex; justify-content: space-between; align-items: center">
+            <div>
+              <h3>🛡 PERMISOS ASIGNADOS AL ROL ({{ permisosFormRolIds.size }} seleccionados)</h3>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <button type="button" class="btn-sm btn-edit" (click)="seleccionarTodosPermisosForm()">
+                ☑ Marcar todos
+              </button>
+              <button type="button" class="btn-sm btn-secondary" (click)="limpiarPermisosForm()">
+                ☐ Limpiar
+              </button>
+            </div>
+          </div>
+          <div class="subcard-body">
+            @if (permisosDisponibles.length === 0) {
+              <p class="empty-box">Cargando catálogo de permisos...</p>
+            } @else {
+              <div class="permisos-grid">
+                @for (p of permisosDisponibles; track p.id_permiso) {
+                  <label
+                    class="perm-checkbox"
+                    [class.checked]="permisosFormRolIds.has(p.id_permiso)"
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="permisosFormRolIds.has(p.id_permiso)"
+                      (change)="togglePermisoFormRol(p.id_permiso)"
+                    />
+                    <div class="perm-info">
+                      <strong>{{ p.nombre }}</strong>
+                      <span>{{ p.descripcion || p.modulo }}</span>
+                      @if (p.modulo) {
+                        <small class="perm-module-tag">{{ p.modulo }}</small>
+                      }
+                    </div>
+                  </label>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          @if (editandoRolId) {
+            <button type="button" class="btn btn-secondary" (click)="cancelarEdicionRol()">
+              Cancelar
+            </button>
+          }
+          <button type="submit" class="btn btn-primary" [disabled]="guardandoRol">
+            {{ guardandoRol ? 'Guardando...' : editandoRolId ? '▶ Actualizar Rol y Permisos' : '▶ Guardar Rol y Permisos' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Panel Rápido de Matriz de Permisos si se pulsó "🛡 Permisos" en la tabla -->
+    @if (rolPermisosSeleccionado) {
+      <section class="card-panel highlight-panel">
+        <div class="panel-header">
+          <div>
+            <h2>🛡 Matriz de Permisos Rápida: {{ rolPermisosSeleccionado.nombre }} ({{ rolPermisosSeleccionado.rol }})</h2>
+            <p>Active o desactive los permisos granulares almacenados en <code>rol_permisos</code> para este rol.</p>
+          </div>
+          <div style="display: flex; gap: 8px">
+            <button type="button" class="btn-sm btn-edit" (click)="seleccionarTodosPermisosModal()">
+              ☑ Todos
+            </button>
+            <button type="button" class="btn-sm btn-secondary" (click)="limpiarPermisosModal()">
+              ☐ Ninguno
+            </button>
+            <button type="button" class="btn-sm btn-del" (click)="rolPermisosSeleccionado = null">
+              Cerrar ✕
+            </button>
+          </div>
+        </div>
+
+        <div class="permisos-grid">
+          @for (perm of permisosDisponibles; track perm.id_permiso) {
+            <label
+              class="perm-checkbox"
+              [class.checked]="permisosActivosIds.has(perm.id_permiso)"
+            >
+              <input
+                type="checkbox"
+                [checked]="permisosActivosIds.has(perm.id_permiso)"
+                (change)="togglePermisoActivo(perm.id_permiso)"
+              />
+              <div class="perm-info">
+                <strong>{{ perm.nombre }}</strong>
+                <span>{{ perm.descripcion || perm.modulo }}</span>
+              </div>
+            </label>
+          }
+        </div>
+
+        <div class="form-actions" style="margin-top: 18px">
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="guardandoPermisos"
+            (click)="guardarMatrizPermisos()"
+          >
+            {{ guardandoPermisos ? 'Guardando en Supabase...' : '💾 Guardar Matriz de Permisos' }}
+          </button>
+        </div>
+      </section>
+    }
+
+    <!-- Tabla de Roles con Buscador, Filtro de Estado y Exportación (igual que roles.html) -->
+    <section class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Gestión de Roles Registrados ({{ rolesFiltrados.length }})</h2>
+          <p>Administre y controle los roles registrados en el sistema.</p>
+        </div>
+        <div class="export-buttons">
+          <button type="button" class="btn-export btn-pdf" (click)="exportarRoles('pdf')">
+            ⬇ PDF
+          </button>
+          <button type="button" class="btn-export btn-excel" (click)="exportarRoles('excel')">
+            ⬇ Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Buscador y Filtro de Roles -->
+      <div class="filters-grid-2">
+        <div class="search-bar-full" style="margin-bottom: 0">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            [(ngModel)]="filtroTextoRol"
+            placeholder="Buscar por nombre o tipo/código de rol..."
+          />
+        </div>
+        <div class="form-field">
+          <select [(ngModel)]="filtroEstadoRol">
+            <option value="">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive" style="margin-top: 16px">
+        <table class="odin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>NOMBRE</th>
+              <th>TIPO / CÓDIGO DE ROL</th>
+              <th>USUARIOS ASIGNADOS</th>
+              <th>ESTADO</th>
+              <th style="text-align: center">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rolesFiltrados; track r.id_rol) {
+              <tr>
+                <td><strong>#{{ r.id_rol }}</strong></td>
+                <td><strong>{{ r.nombre }}</strong></td>
+                <td><code>{{ r.rol }}</code></td>
+                <td>
+                  <span class="role-chip">{{ contarUsuariosPorRol(r.id_rol) }} usuario(s)</span>
+                </td>
+                <td>
+                  <span
+                    class="status-chip"
+                    [class.inactive]="r.estado && r.estado.toLowerCase() !== 'activo'"
+                  >
+                    {{ r.estado || 'Activo' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="row-actions" style="justify-content: center">
+                    <button
+                      type="button"
+                      class="btn-sm btn-perm"
+                      title="Configurar matriz de permisos"
+                      (click)="abrirPermisos(r)"
+                    >
+                      🛡 Permisos
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-sm btn-edit"
+                      title="Editar rol y sus permisos"
+                      (click)="editarRol(r)"
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-sm btn-del"
+                      title="Eliminar rol"
+                      (click)="eliminarRol(r)"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>Mostrando {{ rolesFiltrados.length }} roles registrados</span>
+      </div>
+    </section>
+  }
+</div>

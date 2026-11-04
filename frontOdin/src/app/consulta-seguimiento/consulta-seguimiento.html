@@ -1,1 +1,272 @@
-<p>consulta-seguimiento works!</p>
+<div class="consulta-page">
+  <!-- Filtros y Exportación -->
+  <section class="card-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Búsqueda Multicriterio y Exportación Oficial</h2>
+        <p>Filtre radicados por número, remitente, asunto, estado, dependencia o trámite y consulte su línea temporal completa.</p>
+      </div>
+      <div class="export-group">
+        <button type="button" class="btn-exp btn-exp-pdf" (click)="exportar('pdf')">⬇ PDF</button>
+        <button type="button" class="btn-exp btn-exp-xls" (click)="exportar('xlsx')">⬇ Excel</button>
+        <button type="button" class="btn-exp btn-exp-csv" (click)="exportar('csv')">⬇ CSV</button>
+      </div>
+    </div>
+
+    <form class="filter-bar" (ngSubmit)="buscar()">
+      <div class="filter-field filter-search">
+        <label>Búsqueda por texto (N° Radicado, Remitente, Asunto)</label>
+        <input
+          type="text"
+          [(ngModel)]="filtros.texto"
+          name="texto"
+          placeholder="Ej: RAD-2026, Petición, nombre del ciudadano..."
+        />
+      </div>
+
+      <div class="filter-field">
+        <label>Estado</label>
+        <select [(ngModel)]="filtros.estado" name="estado">
+          <option [ngValue]="null">Todos los estados</option>
+          @for (e of estados; track e.id_estado) {
+            <option [ngValue]="e.id_estado">{{ e.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label>Dependencia</label>
+        <select [(ngModel)]="filtros.dependencia" name="dependencia">
+          <option [ngValue]="null">Todas las dependencias</option>
+          @for (d of dependencias; track d.id_dependencia) {
+            <option [ngValue]="d.id_dependencia">{{ d.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label>Trámite</label>
+        <select [(ngModel)]="filtros.tramite" name="tramite">
+          <option [ngValue]="null">Todos los trámites</option>
+          @for (t of tramites; track t.idTramite) {
+            <option [ngValue]="t.idTramite">{{ t.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-buttons">
+        <button type="submit" class="btn btn-primary">⌕ Buscar</button>
+        <button type="button" class="btn btn-secondary" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Tabla de Resultados -->
+  <section class="card-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Resultados de Consulta ({{ radicados.length }} registros)</h2>
+        <p>Seleccione <strong>Trazabilidad</strong> para inspeccionar el historial de movimientos, traslados y observaciones.</p>
+      </div>
+    </div>
+
+    @if (cargando) {
+      <p class="empty-msg">Consultando radicados...</p>
+    } @else if (radicados.length === 0) {
+      <p class="empty-msg">No se encontraron radicados con los criterios seleccionados.</p>
+    } @else {
+      <div class="table-responsive">
+        <table class="odin-table">
+          <thead>
+            <tr>
+              <th>N° Radicado</th>
+              <th>Fecha</th>
+              <th>Remitente</th>
+              <th>Asunto</th>
+              <th>Trámite / Dependencia</th>
+              <th>Responsable</th>
+              <th>Prioridad</th>
+              <th>Estado</th>
+              <th>Plazo / Semáforo</th>
+              <th>Seguimiento</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of radicados; track r.id_radicado) {
+              <tr [class.selected-row]="radicadoSeleccionado?.id_radicado === r.id_radicado">
+                <td><strong class="rad-number">{{ r.numero_radicado }}</strong></td>
+                <td>{{ r.fecha_radicado }}</td>
+                <td>{{ r.remitente }}</td>
+                <td class="asunto-cell">{{ r.asunto }}</td>
+                <td>
+                  <div><strong>{{ r.tramite?.nombre || 'Trámite #' + r.id_tramite }}</strong></div>
+                  <small class="text-muted">{{ nombreDependencia(r.id_dependencia) }}</small>
+                </td>
+                <td>{{ r.usuario?.nombre || nombreUsuario(r.id_usuario) }}</td>
+                <td>
+                  <span
+                    class="prio-badge"
+                    [class.prio-alta]="r.prioridad === 'ALTA' || r.prioridad === 'URGENTE'"
+                    [class.prio-media]="r.prioridad === 'MEDIA'"
+                  >
+                    {{ r.prioridad || 'MEDIA' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge-status">{{ r.estado?.nombre || 'Estado #' + r.id_estado }}</span>
+                </td>
+                <td>
+                  <div>{{ r.fecha_vencimiento || r.fecha_limite || '—' }}</div>
+                  @if (r.diasRestantes !== null && r.diasRestantes !== undefined) {
+                    <span
+                      class="semaforo"
+                      [class.sem-rojo]="r.diasRestantes < 0"
+                      [class.sem-amarillo]="r.diasRestantes >= 0 && r.diasRestantes <= 3"
+                      [class.sem-verde]="r.diasRestantes > 3"
+                    >
+                      ● {{ r.diasRestantes < 0 ? 'Vencido (' + r.diasRestantes + 'd)' : r.diasRestantes + ' días' }}
+                    </span>
+                  } @else {
+                    <small class="text-muted">Cerrado / Sin plazo</small>
+                  }
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="btn-trace" (click)="verSeguimiento(r)">
+                      📋 Trazabilidad
+                    </button>
+                    <button type="button" class="btn-pdf" (click)="abrirComprobante(r.id_radicado)" title="Comprobante PDF">
+                      PDF
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- Panel Detallado de Seguimiento y Línea Temporal -->
+  @if (radicadoSeleccionado) {
+    <section class="card-panel detail-panel">
+      <div class="panel-header">
+        <div>
+          <h2>
+            Expediente y Línea Temporal:
+            <span class="rad-highlight">{{ radicadoSeleccionado.numero_radicado }}</span>
+          </h2>
+          <p>{{ radicadoSeleccionado.asunto }} — Remitente: <strong>{{ radicadoSeleccionado.remitente }}</strong></p>
+        </div>
+        <button type="button" class="btn btn-secondary" (click)="cerrarDetalle()">✕ Cerrar detalle</button>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-box">
+          <span>Tipo / Canal</span>
+          <strong>{{ radicadoSeleccionado.tipo_radicado || 'ENTRADA' }} · {{ radicadoSeleccionado.medio_recepcion || 'Ventanilla' }}</strong>
+        </div>
+        <div class="meta-box">
+          <span>Clasificación CCD</span>
+          <strong>Serie: {{ radicadoSeleccionado.codigo_serie || 'N/A' }} · Subserie: {{ radicadoSeleccionado.codigo_subserie || 'N/A' }}</strong>
+        </div>
+        <div class="meta-box">
+          <span>Confidencialidad</span>
+          <strong>{{ radicadoSeleccionado.confidencialidad || 'PUBLICO' }}</strong>
+        </div>
+        <div class="meta-box">
+          <span>Fecha Cierre</span>
+          <strong>{{ radicadoSeleccionado.fecha_cierre || 'En trámite activo' }}</strong>
+        </div>
+      </div>
+
+      @if (mensajeExito) {
+        <div class="alert alert-success">{{ mensajeExito }}</div>
+      }
+      @if (mensajeError) {
+        <div class="alert alert-danger">{{ mensajeError }}</div>
+      }
+
+      <div class="timeline-columns">
+        <!-- Columna 1: Historial de Auditoría y Reasignaciones -->
+        <div class="timeline-col">
+          <h3>Línea Temporal de Movimientos ({{ historial.length }})</h3>
+          @if (historial.length === 0) {
+            <p class="empty-msg">Sin eventos registrados en el historial.</p>
+          } @else {
+            <div class="timeline-list">
+              @for (h of historial; track h.id_historial) {
+                <div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-body">
+                    <div class="timeline-head">
+                      <span class="timeline-action">{{ h.accion | uppercase }}</span>
+                      <small>{{ h.fecha }}</small>
+                    </div>
+                    <p>{{ h.descripcion }}</p>
+                    <small class="text-muted">Por: {{ nombreUsuario(h.id_usuario) }}</small>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (reasignaciones.length > 0) {
+            <h3 style="margin-top: 20px">Historial de Reasignaciones ({{ reasignaciones.length }})</h3>
+            <div class="timeline-list">
+              @for (re of reasignaciones; track re.id_reasignacion) {
+                <div class="timeline-item">
+                  <div class="timeline-dot dot-blue"></div>
+                  <div class="timeline-body">
+                    <div class="timeline-head">
+                      <strong>Traslado a {{ nombreDependencia(re.id_dependencia_nueva) }}</strong>
+                      <small>{{ re.fecha }}</small>
+                    </div>
+                    <p>
+                      De {{ nombreUsuario(re.id_usuario_anterior) }} →
+                      <strong>{{ nombreUsuario(re.id_usuario_nuevo) }}</strong>
+                    </p>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Columna 2: Observaciones y Bitácora -->
+        <div class="timeline-col">
+          <h3>Observaciones y Anotaciones ({{ observaciones.length }})</h3>
+          <form class="obs-form" (ngSubmit)="registrarObservacion()">
+            <textarea
+              rows="3"
+              [(ngModel)]="nuevaObservacion"
+              name="nuevaObservacion"
+              placeholder="Escriba una observación técnica o de seguimiento para este radicado..."
+              required
+            ></textarea>
+            <button type="submit" class="btn btn-primary" [disabled]="guardandoObs">
+              {{ guardandoObs ? 'Guardando...' : '+ Agregar Observación' }}
+            </button>
+          </form>
+
+          @if (observaciones.length === 0) {
+            <p class="empty-msg">No hay observaciones registradas para este radicado.</p>
+          } @else {
+            <div class="obs-list">
+              @for (o of observaciones; track o.id_observacion) {
+                <div class="obs-card">
+                  <div class="obs-header">
+                    <strong>{{ nombreUsuario(o.id_usuario) }}</strong>
+                    <small>{{ o.fecha }}</small>
+                  </div>
+                  <p>{{ o.comentario }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  }
+</div>

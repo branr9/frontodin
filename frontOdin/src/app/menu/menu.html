@@ -1,9 +1,3 @@
-
-
-
-
-
-<!-- [AUTH ANGULAR] Esta es la interfaz Angular destino después del login. -->
 <div class="app-shell">
 	<aside class="sidebar" aria-label="Navegación principal">
 		<div class="sidebar-brand">
@@ -32,20 +26,19 @@
 				<span class="nav-icon" aria-hidden="true">♙</span>
 				<span>Gestión de usuarios</span>
 			</a>
-			<p class="nav-label section-label">SISTEMA</p>
-			<button class="nav-item nav-button" type="button">
+			<p class="nav-label section-label">ACCESOS RÁPIDOS</p>
+			<a class="nav-item" href="http://localhost:8080/swagger-ui.html" target="_blank" rel="noopener">
 				<span class="nav-icon" aria-hidden="true">⚙</span>
-				<span>Configuración</span>
-			</button>
+				<span>API Swagger</span>
+			</a>
 		</nav>
 
 		<div class="sidebar-footer">
-			<div class="user-avatar" aria-hidden="true">U</div>
+			<div class="user-avatar" aria-hidden="true">{{ userInitial }}</div>
 			<div class="user-info">
-				<strong>Usuario ODIN</strong>
-				<span>Sesión activa</span>
+				<strong>{{ currentUser?.nombre || 'Usuario ODIN' }}</strong>
+				<span>{{ currentUser?.correo || 'Sesión activa' }}</span>
 			</div>
-			<!-- [AUTH ANGULAR] Botón de cierre de sesión del menú Angular. -->
 			<button
 				class="logout-button"
 				type="button"
@@ -61,17 +54,50 @@
 	<main class="main-content">
 		<header class="topbar">
 			<div>
-				<p class="eyebrow">ESPACIO DE TRABAJO</p>
-				<h1>Panel principal</h1>
+				<p class="eyebrow">ESPACIO DE TRABAJO · GESTOR DOCUMENTAL ODIN</p>
+				<h1>{{ pageTitle }}</h1>
 			</div>
 			<div class="topbar-actions">
-				<button class="icon-button" type="button" aria-label="Notificaciones">♧</button>
-				<div class="topbar-user">Usuario</div>
+				<div class="notif-wrapper">
+					<button class="icon-button" type="button" aria-label="Notificaciones" (click)="toggleNotificaciones()">
+						🔔
+						@if (notificacionesNoLeidas > 0) {
+							<span class="notif-badge">{{ notificacionesNoLeidas }}</span>
+						}
+					</button>
+					@if (mostrarNotificaciones) {
+						<div class="notif-dropdown">
+							<div class="notif-header">
+								<strong>Notificaciones</strong>
+								<span>{{ notificacionesNoLeidas }} sin leer</span>
+							</div>
+							@if (notificaciones.length === 0) {
+								<p class="notif-empty">No tienes alertas pendientes.</p>
+							} @else {
+								<div class="notif-list">
+									@for (n of notificaciones; track n.id_notificacion) {
+										<div class="notif-item" [class.unread]="!n.leida">
+											<div>
+												<strong>{{ n.titulo }}</strong>
+												<p>{{ n.mensaje }}</p>
+											</div>
+											@if (!n.leida) {
+												<button type="button" class="notif-read-btn" (click)="marcarLeida(n.id_notificacion)">Leída</button>
+											}
+										</div>
+									}
+								</div>
+							}
+						</div>
+					}
+				</div>
+				<div class="topbar-user">
+					<strong>{{ currentUser?.nombre || 'Usuario Activo' }}</strong>
+				</div>
 			</div>
 		</header>
 
 		<section class="content-area">
-			<!-- [AUTH ANGULAR] Los componentes existentes se renderizan aquí sin cambiar sus HTML. -->
 			<router-outlet></router-outlet>
 		</section>
 	</main>
