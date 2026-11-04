@@ -1,0 +1,15 @@
+# Dependencias
+node_modules
+
+# Compilado
+dist
+dist-ssr
+
+# Registros
+*.log
+npm-debug.log*
+
+# Editor y sistema
+.DS_Store
+.idea
+*.local
